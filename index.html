@@ -173,8 +173,8 @@
     </div>
 
     <div>
-      <label>Upload Converted Order (Excel)</label>
-      <input type="file" id="excelUpload" accept=".xlsx,.xls,.csv">
+      <label>Upload Converted Order / BOQ PDF</label>
+      <input type="file" id="boqUpload" accept="application/pdf">
     </div>
 
     <button class="action-btn" onclick="generateFinalReport()">
@@ -200,9 +200,15 @@
     <div class="panel">
       <h2>Validation Panel</h2>
 
-      <label>Drawing Type</label>
-      <select id="drawingType" onchange="loadChecklist()">
-        <option value="">Select</option>
+      
+
+      <label>Room Name</label>
+      <select id="roomSelect">
+        <option value="">Select Room</option>
+      </select>
+
+      <label>Drawing Categories</label>
+      <select id="drawingType" multiple onchange="loadChecklist()" style="height:120px;">
         <option value="false_ceiling">False Ceiling</option>
         <option value="electrical">Electrical</option>
         <option value="plumbing">Plumbing</option>
@@ -210,9 +216,8 @@
         <option value="elevation">Elevation</option>
       </select>
 
-      <label>SKU</label>
-      <select id="skuSelect">
-        <option value="">Select SKU</option>
+      <label>SKU / Item Names</label>
+      <select id="skuSelect" multiple style="height:150px;">
       </select>
 
       <div id="checklistContainer"></div>
@@ -239,6 +244,8 @@
     let totalPages = 0;
 
     let skuData = [];
+    let roomData = [];
+    let boqText = '';
     let validationData = [];
 
     const checklists = {
@@ -342,23 +349,32 @@
       renderPage(currentPageNum);
     }
 
-    document.getElementById('excelUpload').addEventListener('change', function(e) {
+    document.getElementById('boqUpload').addEventListener('change', function(e) {
 
       const file = e.target.files[0];
 
       const reader = new FileReader();
 
-      reader.onload = function(event) {
+      reader.onload = async function(event) {
 
-        const data = new Uint8Array(event.target.result);
+        const typedArray = new Uint8Array(event.target.result);
 
-        const workbook = XLSX.read(data, { type: 'array' });
+        const pdf = await pdfjsLib.getDocument(typedArray).promise;
 
-        const sheetName = workbook.SheetNames[0];
+        boqText = '';
 
-        const worksheet = workbook.Sheets[sheetName];
+        for (let i = 1; i <= pdf.numPages; i++) {
 
-        skuData = XLSX.utils.sheet_to_json(worksheet);
+          const page = await pdf.getPage(i);
+
+          const textContent = await page.getTextContent();
+
+          const pageText = textContent.items.map(item => item.str).join(' ');
+
+          boqText += pageText + ' ';
+        }
+
+        extractBoqData(boqText);
 
         populateSkuDropdown();
       };
@@ -369,16 +385,32 @@
     function populateSkuDropdown() {
 
       const skuSelect = document.getElementById('skuSelect');
+      const roomSelect = document.getElementById('roomSelect');
 
-      skuSelect.innerHTML = '<option value="">Select SKU</option>';
+      skuSelect.innerHTML = '';
+      roomSelect.innerHTML = '<option value="">Select Room</option>';
 
-      skuData.forEach(item => {
+      const uniqueRooms = [...new Set(roomData)];
+      const uniqueSkus = [...new Set(skuData)];
+
+      uniqueRooms.forEach(room => {
 
         const option = document.createElement('option');
+        option.value = room;
+        option.textContent = room;
 
-        option.value = item.SKU || item.sku;
+        roomSelect.appendChild(option);
+      });
 
-        option.textContent = `${item.SKU || item.sku} - ${item.Description || item.description || ''}`;
+      uniqueSkus.forEach(sku => {
+
+        const option = document.createElement('option');
+        option.value = sku;
+        option.textContent = sku;
+
+        skuSelect.appendChild(option);
+      });
+    } - ${item.Description || item.description || ''}`;
 
         skuSelect.appendChild(option);
       });
@@ -386,15 +418,29 @@
 
     function loadChecklist() {
 
-      const drawingType = document.getElementById('drawingType').value;
+      const drawingSelect = document.getElementById('drawingType');
+
+      const selectedCategories = Array.from(drawingSelect.selectedOptions).map(option => option.value);
 
       const container = document.getElementById('checklistContainer');
 
       container.innerHTML = '';
 
-      if (!drawingType) return;
+      let combinedChecklist = [];
 
-      const checklist = checklists[drawingType] || [];
+      selectedCategories.forEach(category => {
+
+        const categoryChecklist = checklists[category] || [];
+
+        categoryChecklist.forEach(item => {
+
+          if (!combinedChecklist.includes(item)) {
+            combinedChecklist.push(item);
+          }
+        });
+      });
+
+      const checklist = combinedChecklist;
 
       checklist.forEach((item, index) => {
 
@@ -426,16 +472,29 @@
 
     function savePageValidation() {
 
-      const drawingType = document.getElementById('drawingType').value;
-      const sku = document.getElementById('skuSelect').value;
+      const selectedCategories = Array.from(document.getElementById('drawingType').selectedOptions).map(option => option.value);
+      const selectedSkus = Array.from(document.getElementById('skuSelect').selectedOptions).map(option => option.value);
+      const roomName = document.getElementById('roomSelect').value;
       const overallRemarks = document.getElementById('overallRemarks').value;
 
-      if (!drawingType || !sku) {
-        alert('Please select drawing type and SKU');
+      if (selectedCategories.length === 0 || selectedSkus.length === 0 || !roomName) {
+        alert('Please select room, drawing categories and SKUs');
         return;
       }
 
-      const checklist = checklists[drawingType] || [];
+      let checklist = [];
+
+      selectedCategories.forEach(category => {
+
+        const categoryChecklist = checklists[category] || [];
+
+        categoryChecklist.forEach(item => {
+
+          if (!checklist.includes(item)) {
+            checklist.push(item);
+          }
+        });
+      });
 
       let checklistResults = [];
 
@@ -452,8 +511,9 @@
 
       const pageData = {
         page: currentPageNum,
-        drawingType,
-        sku,
+        drawingTypes: selectedCategories,
+        skus: selectedSkus,
+        roomName,
         overallRemarks,
         checklistResults
       };
@@ -497,6 +557,44 @@
       });
     }
 
+    function extractBoqData(text) {
+
+      const lines = text.split(/
+|  /);
+
+      lines.forEach(line => {
+
+        const cleaned = line.trim();
+
+        if (cleaned.length < 3) return;
+
+        if (
+          cleaned.toLowerCase().includes('bedroom') ||
+          cleaned.toLowerCase().includes('kitchen') ||
+          cleaned.toLowerCase().includes('living') ||
+          cleaned.toLowerCase().includes('toilet') ||
+          cleaned.toLowerCase().includes('bathroom') ||
+          cleaned.toLowerCase().includes('foyer') ||
+          cleaned.toLowerCase().includes('balcony')
+        ) {
+          roomData.push(cleaned);
+        }
+
+        if (
+          cleaned.toLowerCase().includes('false ceiling') ||
+          cleaned.toLowerCase().includes('electrical') ||
+          cleaned.toLowerCase().includes('wardrobe') ||
+          cleaned.toLowerCase().includes('vanity') ||
+          cleaned.toLowerCase().includes('plumbing') ||
+          cleaned.toLowerCase().includes('flooring') ||
+          cleaned.toLowerCase().includes('panel') ||
+          cleaned.toLowerCase().includes('tv unit')
+        ) {
+          skuData.push(cleaned);
+        }
+      });
+    }
+
     function generateFinalReport() {
 
       if (validationData.length === 0) {
@@ -511,8 +609,9 @@
           <thead>
             <tr>
               <th>Page</th>
-              <th>Drawing Type</th>
-              <th>SKU</th>
+              <th>Room</th>
+              <th>Drawing Types</th>
+              <th>SKUs</th>
               <th>Checklist Item</th>
               <th>Status</th>
               <th>Remarks</th>
@@ -530,8 +629,9 @@
             html += `
               <tr>
                 <td>${page.page}</td>
-                <td>${page.drawingType}</td>
-                <td>${page.sku}</td>
+                <td>${page.roomName}</td>
+                <td>${page.drawingTypes.join(', ')}</td>
+                <td>${page.skus.join(', ')}</td>
                 <td>${item.item}</td>
                 <td>${item.status}</td>
                 <td>${item.remarks}</td>
