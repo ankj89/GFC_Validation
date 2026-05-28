@@ -6,7 +6,6 @@
   <title>GFC Validation App</title>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <style>
     * {
@@ -139,6 +138,9 @@
 
     .report-section {
       margin-top: 20px;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
     }
 
     table {
@@ -166,490 +168,670 @@
 </head>
 <body>
 
-  <div class="top-bar">
-    <div>
-      <label>Upload GFC PDF</label>
-      <input type="file" id="pdfUpload" accept="application/pdf">
+<div class="top-bar">
+
+  <div>
+    <label>Upload GFC PDF</label>
+    <input type="file" id="pdfUpload" accept="application/pdf">
+  </div>
+
+  <div>
+    <label>Upload BOQ PDF</label>
+    <input type="file" id="boqUpload" accept="application/pdf">
+  </div>
+
+  <button class="action-btn" onclick="generateFinalReport()">
+    Generate Report
+  </button>
+
+</div>
+
+<div class="container">
+
+  <div class="viewer">
+
+    <canvas id="pdfCanvas"></canvas>
+
+    <div class="page-info">
+      Page <span id="currentPage">0</span> of <span id="totalPages">0</span>
     </div>
 
-    <div>
-      <label>Upload Converted Order / BOQ PDF</label>
-      <input type="file" id="boqUpload" accept="application/pdf">
+    <div class="navigation">
+      <button onclick="prevPage()">Previous</button>
+      <button onclick="nextPage()">Next</button>
     </div>
 
-    <button class="action-btn" onclick="generateFinalReport()">
-      Generate Report
+  </div>
+
+  <div class="panel">
+
+    <h2>Validation Panel</h2>
+
+    <label>Room Name</label>
+    <select id="roomSelect">
+      <option value="">Select Room</option>
+    </select>
+
+    <label>Drawing Categories</label>
+    <select id="drawingType" multiple onchange="loadChecklist()" style="height:120px;">
+      <option value="false_ceiling">False Ceiling</option>
+      <option value="electrical">Electrical</option>
+      <option value="plumbing">Plumbing</option>
+      <option value="flooring">Flooring</option>
+      <option value="elevation">Elevation</option>
+    </select>
+
+    <label>SKU / Item Names</label>
+    <select id="skuSelect" multiple style="height:150px;">
+    </select>
+
+    <div id="checklistContainer"></div>
+
+    <label>Overall Remarks</label>
+    <textarea id="overallRemarks"></textarea>
+
+    <button class="action-btn" style="margin-top:20px; width:100%;" onclick="savePageValidation()">
+      Save Validation
     </button>
-  </div>
-
-  <div class="container">
-
-    <div class="viewer">
-      <canvas id="pdfCanvas"></canvas>
-
-      <div class="page-info">
-        Page <span id="currentPage">0</span> of <span id="totalPages">0</span>
-      </div>
-
-      <div class="navigation">
-        <button onclick="prevPage()">Previous</button>
-        <button onclick="nextPage()">Next</button>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>Validation Panel</h2>
-
-      
-
-      <label>Room Name</label>
-      <select id="roomSelect">
-        <option value="">Select Room</option>
-      </select>
-
-      <label>Drawing Categories</label>
-      <select id="drawingType" multiple onchange="loadChecklist()" style="height:120px;">
-        <option value="false_ceiling">False Ceiling</option>
-        <option value="electrical">Electrical</option>
-        <option value="plumbing">Plumbing</option>
-        <option value="flooring">Flooring</option>
-        <option value="elevation">Elevation</option>
-      </select>
-
-      <label>SKU / Item Names</label>
-      <select id="skuSelect" multiple style="height:150px;">
-      </select>
-
-      <div id="checklistContainer"></div>
-
-      <label>Overall Remarks</label>
-      <textarea id="overallRemarks"></textarea>
-
-      <button class="action-btn" style="margin-top:20px; width:100%;" onclick="savePageValidation()">
-        Save Validation
-      </button>
-    </div>
 
   </div>
 
-  <div class="report-section" id="reportSection"></div>
+</div>
 
-  <script>
+<div class="report-section" id="reportSection"></div>
 
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+<script>
 
-    let pdfDoc = null;
-    let currentPageNum = 1;
-    let totalPages = 0;
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-    let skuData = [];
-    let roomData = [];
-    let boqText = '';
-    let validationData = [];
+let pdfDoc = null;
+let currentPageNum = 1;
+let totalPages = 0;
 
-    const checklists = {
-      false_ceiling: [
-        'Ceiling Layout',
-        'Ceiling Levels',
-        'Section Details',
-        'Light Coordination',
-        'AC Coordination',
-        'Legend',
-        'Dimensions'
-      ],
+let skuData = [];
+let roomData = [];
+let validationData = [];
 
-      electrical: [
-        'Switchboard Layout',
-        'Circuit Routing',
-        'DB Connection',
-        'Load Details',
-        'Ceiling Looping',
-        'Legend'
-      ],
+const checklists = {
 
-      plumbing: [
-        'Drain Point',
-        'Water Inlet',
-        'Trap Detail',
-        'Isometric',
-        'Legend'
-      ],
+  false_ceiling: [
+    'Ceiling Layout',
+    'Ceiling Levels',
+    'Section Details',
+    'Light Coordination',
+    'AC Coordination',
+    'Legend',
+    'Dimensions'
+  ],
 
-      flooring: [
-        'Tile Layout',
-        'Pattern Detail',
-        'Skirting Detail',
-        'Dimensions'
-      ],
+  electrical: [
+    'Switchboard Layout',
+    'Circuit Routing',
+    'DB Connection',
+    'Load Details',
+    'Ceiling Looping',
+    'Legend'
+  ],
 
-      elevation: [
-        'Dimensions',
-        'Material Details',
-        'Section Reference',
-        'Hardware Details'
-      ]
-    };
+  plumbing: [
+    'Drain Point',
+    'Water Inlet',
+    'Trap Detail',
+    'Isometric',
+    'Legend'
+  ],
 
-    document.getElementById('pdfUpload').addEventListener('change', async function(e) {
+  flooring: [
+    'Tile Layout',
+    'Pattern Detail',
+    'Skirting Detail',
+    'Dimensions'
+  ],
 
-      const file = e.target.files[0];
+  elevation: [
+    'Dimensions',
+    'Material Details',
+    'Section Reference',
+    'Hardware Details'
+  ]
+};
 
-      if (!file) return;
+// PDF Upload
 
-      const fileReader = new FileReader();
+document.getElementById('pdfUpload').addEventListener('change', async function(e) {
 
-      fileReader.onload = async function() {
+  const file = e.target.files[0];
 
-        const typedArray = new Uint8Array(this.result);
+  if (!file) return;
 
-        pdfDoc = await pdfjsLib.getDocument(typedArray).promise;
+  const reader = new FileReader();
 
-        totalPages = pdfDoc.numPages;
+  reader.onload = async function() {
 
-        document.getElementById('totalPages').innerText = totalPages;
+    const typedArray = new Uint8Array(this.result);
 
-        renderPage(currentPageNum);
-      };
+    pdfDoc = await pdfjsLib.getDocument(typedArray).promise;
 
-      fileReader.readAsArrayBuffer(file);
+    totalPages = pdfDoc.numPages;
+
+    document.getElementById('totalPages').innerText = totalPages;
+
+    currentPageNum = 1;
+
+    renderPage(currentPageNum);
+  };
+
+  reader.readAsArrayBuffer(file);
+});
+
+// BOQ Upload
+
+document.getElementById('boqUpload').addEventListener('change', async function(e) {
+
+  const file = e.target.files[0];
+
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = async function(event) {
+
+    const typedArray = new Uint8Array(event.target.result);
+
+    const pdf = await pdfjsLib.getDocument(typedArray).promise;
+
+    let extractedText = '';
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+
+      const page = await pdf.getPage(i);
+
+      const textContent = await page.getTextContent();
+
+      const pageText = textContent.items.map(item => item.str).join(' ');
+
+      extractedText += pageText + '\n';
+    }
+
+    extractBoqData(extractedText);
+
+    populateDropdowns();
+  };
+
+  reader.readAsArrayBuffer(file);
+});
+
+async function renderPage(num) {
+
+  if (!pdfDoc) return;
+
+  const page = await pdfDoc.getPage(num);
+
+  const canvas = document.getElementById('pdfCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const viewport = page.getViewport({ scale: 1.5 });
+
+  canvas.height = viewport.height;
+  canvas.width = viewport.width;
+
+  await page.render({
+    canvasContext: ctx,
+    viewport: viewport
+  }).promise;
+
+  document.getElementById('currentPage').innerText = num;
+
+  loadSavedValidation(num);
+}
+
+function prevPage() {
+
+  if (currentPageNum <= 1) return;
+
+  currentPageNum--;
+
+  renderPage(currentPageNum);
+}
+
+function nextPage() {
+
+  if (currentPageNum >= totalPages) return;
+
+  currentPageNum++;
+
+  renderPage(currentPageNum);
+}
+
+async function parseStructuredBOQ(pdf) {
+
+  skuData = [];
+  roomData = [];
+
+  const boqRows = [];
+
+  let currentRoom = '';
+
+  const roomKeywords = [
+    'LIVING',
+    'KITCHEN',
+    'FOYER',
+    'BEDROOM',
+    'MASTER BEDROOM',
+    'BATHROOM',
+    'TOILET',
+    'DINING',
+    'BALCONY',
+    'UTILITY',
+    'PASSAGE',
+    'BEFORE ENTRANCE',
+    'ADDITIONAL ROOM'
+  ];
+
+  for (let p = 1; p <= pdf.numPages; p++) {
+
+    const page = await pdf.getPage(p);
+
+    const textContent = await page.getTextContent();
+
+    // SORT ITEMS TOP TO BOTTOM
+    const items = textContent.items.sort((a, b) => {
+
+      const yDiff = b.transform[5] - a.transform[5];
+
+      if (Math.abs(yDiff) > 3) {
+        return yDiff;
+      }
+
+      return a.transform[4] - b.transform[4];
     });
 
-    async function renderPage(num) {
+    // GROUP INTO VISUAL ROWS
+    const rows = [];
 
-      const page = await pdfDoc.getPage(num);
+    items.forEach(item => {
 
-      const canvas = document.getElementById('pdfCanvas');
-      const ctx = canvas.getContext('2d');
+      const y = item.transform[5];
 
-      const viewport = page.getViewport({ scale: 1.5 });
+      let row = rows.find(r => Math.abs(r.y - y) < 3);
 
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
+      if (!row) {
 
-      await page.render({
-        canvasContext: ctx,
-        viewport: viewport
-      }).promise;
+        row = {
+          y: y,
+          items: []
+        };
 
-      document.getElementById('currentPage').innerText = num;
+        rows.push(row);
+      }
 
-      loadSavedValidation(num);
-    }
+      row.items.push({
+        text: item.str,
+        x: item.transform[4]
+      });
+    });
 
-    function prevPage() {
-      if (currentPageNum <= 1) return;
-      currentPageNum--;
-      renderPage(currentPageNum);
-    }
+    rows.forEach(row => {
 
-    function nextPage() {
-      if (currentPageNum >= totalPages) return;
-      currentPageNum++;
-      renderPage(currentPageNum);
-    }
+      // SORT LEFT TO RIGHT
+      row.items.sort((a, b) => a.x - b.x);
 
-    document.getElementById('boqUpload').addEventListener('change', function(e) {
+      const rowText = row.items
+        .map(i => i.text)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-      const file = e.target.files[0];
+      if (rowText.length < 2) return;
 
-      const reader = new FileReader();
+      const upper = rowText.toUpperCase();
 
-      reader.onload = async function(event) {
+      // ROOM DETECTION
+      const detectedRoom = roomKeywords.find(room =>
+        upper.includes(room)
+      );
 
-        const typedArray = new Uint8Array(event.target.result);
+      if (
+        detectedRoom &&
+        rowText.length < 60
+      ) {
 
-        const pdf = await pdfjsLib.getDocument(typedArray).promise;
+        currentRoom = detectedRoom;
 
-        boqText = '';
+        if (!roomData.includes(currentRoom)) {
+          roomData.push(currentRoom);
+        }
+      }
 
-        for (let i = 1; i <= pdf.numPages; i++) {
+      // ITEM DETECTION
+      // Example:
+      // QI-12345 POP Ceiling with Electrical
 
-          const page = await pdf.getPage(i);
+      if (rowText.match(/^QI-/i)) {
 
-          const textContent = await page.getTextContent();
+        const split = rowText.split(' ');
 
-          const pageText = textContent.items.map(item => item.str).join(' ');
+        const itemCode = split[0];
 
-          boqText += pageText + ' ';
+        let itemName = split
+          .slice(1)
+          .join(' ');
+
+        // CLEANUP
+        itemName = itemName
+          .replace(/Brand\s*:.*/i, '')
+          .replace(/Location\s*:.*/i, '')
+          .replace(/\[[^\]]+\]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        // REMOVE DUPLICATES
+        if (
+          itemName &&
+          !skuData.includes(itemName)
+        ) {
+
+          skuData.push(itemName);
         }
 
-        extractBoqData(boqText);
-
-        populateSkuDropdown();
-      };
-
-      reader.readAsArrayBuffer(file);
+        boqRows.push({
+          room: currentRoom,
+          itemCode: itemCode,
+          itemName: itemName,
+          fullRow: rowText
+        });
+      }
     });
+  }
 
-    function populateSkuDropdown() {
+  console.log('ROOMS:', roomData);
+  console.log('SKUS:', skuData);
+  console.log('BOQ ROWS:', boqRows);
 
-      const skuSelect = document.getElementById('skuSelect');
-      const roomSelect = document.getElementById('roomSelect');
+  window.structuredBoqData = boqRows;
 
-      skuSelect.innerHTML = '';
-      roomSelect.innerHTML = '<option value="">Select Room</option>';
+  populateDropdowns();
+}
 
-      const uniqueRooms = [...new Set(roomData)];
-      const uniqueSkus = [...new Set(skuData)];
 
-      uniqueRooms.forEach(room => {
+function exportBoqToExcel(rows) {
 
-        const option = document.createElement('option');
-        option.value = room;
-        option.textContent = room;
+  if (!rows || rows.length === 0) return;
 
-        roomSelect.appendChild(option);
-      });
+  let csvContent = 'Room,Item Code,Item Name
+';
 
-      uniqueSkus.forEach(sku => {
+  rows.forEach(row => {
 
-        const option = document.createElement('option');
-        option.value = sku;
-        option.textContent = sku;
+    csvContent += '"' + row.room + '","' + row.itemCode + '","' + row.itemName + '"
+';
+  });
 
-        skuSelect.appendChild(option);
-      });
-    } - ${item.Description || item.description || ''}`;
+  const blob = new Blob([csvContent], {
+    type: 'text/csv;charset=utf-8;'
+  });
 
-        skuSelect.appendChild(option);
-      });
+  const link = document.createElement('a');
+
+  const url = URL.createObjectURL(blob);
+
+  link.setAttribute('href', url);
+  link.setAttribute('download', 'parsed_boq.csv');
+
+  document.body.appendChild(link);
+
+  link.click();
+
+  document.body.removeChild(link);
+}
+
+function populateDropdowns() {
+
+  const roomSelect = document.getElementById('roomSelect');
+  const skuSelect = document.getElementById('skuSelect');
+
+  roomSelect.innerHTML = '<option value="">Select Room</option>';
+  skuSelect.innerHTML = '';
+
+  [...new Set(roomData)].forEach(room => {
+
+    const option = document.createElement('option');
+
+    option.value = room;
+    option.textContent = room;
+
+    roomSelect.appendChild(option);
+  });
+
+  [...new Set(skuData)].forEach(sku => {
+
+    const option = document.createElement('option');
+
+    option.value = sku;
+    option.textContent = sku;
+
+    skuSelect.appendChild(option);
+  });
+}
+
+function loadChecklist() {
+
+  const drawingSelect = document.getElementById('drawingType');
+
+  const selectedCategories = Array.from(drawingSelect.selectedOptions)
+    .map(option => option.value);
+
+  const container = document.getElementById('checklistContainer');
+
+  container.innerHTML = '';
+
+  let combinedChecklist = [];
+
+  selectedCategories.forEach(category => {
+
+    const categoryChecklist = checklists[category] || [];
+
+    categoryChecklist.forEach(item => {
+
+      if (!combinedChecklist.includes(item)) {
+        combinedChecklist.push(item);
+      }
+    });
+  });
+
+  combinedChecklist.forEach((item, index) => {
+
+    const div = document.createElement('div');
+
+    div.className = 'checklist-item';
+
+    div.innerHTML = `
+      <h4>${item}</h4>
+
+      <div class="status-buttons">
+        <button type="button" class="present" onclick="setStatus(${index}, 'Present')">Present</button>
+        <button type="button" class="missing" onclick="setStatus(${index}, 'Missing')">Missing</button>
+        <button type="button" class="na" onclick="setStatus(${index}, 'N/A')">N/A</button>
+      </div>
+
+      <input type="hidden" id="status-${index}" value="">
+
+      <textarea id="remark-${index}" placeholder="Remarks"></textarea>
+    `;
+
+    container.appendChild(div);
+  });
+}
+
+function setStatus(index, status) {
+
+  const statusInput = document.getElementById(`status-${index}`);
+
+  if (statusInput) {
+    statusInput.value = status;
+  }
+}
+
+function savePageValidation() {
+
+  const selectedCategories = Array.from(document.getElementById('drawingType').selectedOptions)
+    .map(option => option.value);
+
+  const selectedSkus = Array.from(document.getElementById('skuSelect').selectedOptions)
+    .map(option => option.value);
+
+  const roomName = document.getElementById('roomSelect').value;
+
+  const overallRemarks = document.getElementById('overallRemarks').value;
+
+  if (!roomName || selectedCategories.length === 0 || selectedSkus.length === 0) {
+    alert('Please select room, categories and SKUs');
+    return;
+  }
+
+  let checklist = [];
+
+  selectedCategories.forEach(category => {
+
+    const categoryChecklist = checklists[category] || [];
+
+    categoryChecklist.forEach(item => {
+
+      if (!checklist.includes(item)) {
+        checklist.push(item);
+      }
+    });
+  });
+
+  let checklistResults = [];
+
+  checklist.forEach((item, index) => {
+
+    checklistResults.push({
+      item,
+      status: document.getElementById(`status-${index}`)?.value || '',
+      remarks: document.getElementById(`remark-${index}`)?.value || ''
+    });
+  });
+
+  const pageData = {
+    page: currentPageNum,
+    roomName,
+    drawingTypes: selectedCategories,
+    skus: selectedSkus,
+    overallRemarks,
+    checklistResults
+  };
+
+  const existingIndex = validationData.findIndex(v => v.page === currentPageNum);
+
+  if (existingIndex >= 0) {
+    validationData[existingIndex] = pageData;
+  } else {
+    validationData.push(pageData);
+  }
+
+  alert(`Validation saved for Page ${currentPageNum}`);
+}
+
+function loadSavedValidation(pageNum) {
+
+  const saved = validationData.find(v => v.page === pageNum);
+
+  if (!saved) {
+
+    document.getElementById('roomSelect').value = '';
+    document.getElementById('overallRemarks').value = '';
+    document.getElementById('checklistContainer').innerHTML = '';
+
+    return;
+  }
+
+  document.getElementById('roomSelect').value = saved.roomName;
+
+  Array.from(document.getElementById('drawingType').options).forEach(option => {
+    option.selected = saved.drawingTypes.includes(option.value);
+  });
+
+  Array.from(document.getElementById('skuSelect').options).forEach(option => {
+    option.selected = saved.skus.includes(option.value);
+  });
+
+  document.getElementById('overallRemarks').value = saved.overallRemarks;
+
+  loadChecklist();
+
+  saved.checklistResults.forEach((item, index) => {
+
+    const statusInput = document.getElementById(`status-${index}`);
+    const remarkInput = document.getElementById(`remark-${index}`);
+
+    if (statusInput) {
+      statusInput.value = item.status;
     }
 
-    function loadChecklist() {
+    if (remarkInput) {
+      remarkInput.value = item.remarks;
+    }
+  });
+}
 
-      const drawingSelect = document.getElementById('drawingType');
+function generateFinalReport() {
 
-      const selectedCategories = Array.from(drawingSelect.selectedOptions).map(option => option.value);
+  if (validationData.length === 0) {
+    alert('No validations saved');
+    return;
+  }
 
-      const container = document.getElementById('checklistContainer');
+  let html = `
+    <h2>Final Validation Report</h2>
 
-      container.innerHTML = '';
+    <table>
+      <thead>
+        <tr>
+          <th>Page</th>
+          <th>Room</th>
+          <th>Drawing Types</th>
+          <th>SKUs</th>
+          <th>Checklist Item</th>
+          <th>Status</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
 
-      let combinedChecklist = [];
+  validationData.forEach(page => {
 
-      selectedCategories.forEach(category => {
+    page.checklistResults.forEach(item => {
 
-        const categoryChecklist = checklists[category] || [];
+      if (item.status === 'Missing') {
 
-        categoryChecklist.forEach(item => {
-
-          if (!combinedChecklist.includes(item)) {
-            combinedChecklist.push(item);
-          }
-        });
-      });
-
-      const checklist = combinedChecklist;
-
-      checklist.forEach((item, index) => {
-
-        const div = document.createElement('div');
-
-        div.className = 'checklist-item';
-
-        div.innerHTML = `
-          <h4>${item}</h4>
-
-          <div class="status-buttons">
-            <button class="present" onclick="setStatus(${index}, 'Present')">Present</button>
-            <button class="missing" onclick="setStatus(${index}, 'Missing')">Missing</button>
-            <button class="na" onclick="setStatus(${index}, 'N/A')">N/A</button>
-          </div>
-
-          <input type="hidden" id="status-${index}" value="">
-
-          <textarea id="remark-${index}" placeholder="Remarks"></textarea>
+        html += `
+          <tr>
+            <td>${page.page}</td>
+            <td>${page.roomName}</td>
+            <td>${page.drawingTypes.join(', ')}</td>
+            <td>${page.skus.join(', ')}</td>
+            <td>${item.item}</td>
+            <td>${item.status}</td>
+            <td>${item.remarks}</td>
+          </tr>
         `;
-
-        container.appendChild(div);
-      });
-    }
-
-    function setStatus(index, status) {
-      document.getElementById(`status-${index}`).value = status;
-    }
-
-    function savePageValidation() {
-
-      const selectedCategories = Array.from(document.getElementById('drawingType').selectedOptions).map(option => option.value);
-      const selectedSkus = Array.from(document.getElementById('skuSelect').selectedOptions).map(option => option.value);
-      const roomName = document.getElementById('roomSelect').value;
-      const overallRemarks = document.getElementById('overallRemarks').value;
-
-      if (selectedCategories.length === 0 || selectedSkus.length === 0 || !roomName) {
-        alert('Please select room, drawing categories and SKUs');
-        return;
       }
+    });
+  });
 
-      let checklist = [];
+  html += `
+      </tbody>
+    </table>
+  `;
 
-      selectedCategories.forEach(category => {
+  document.getElementById('reportSection').innerHTML = html;
+}
 
-        const categoryChecklist = checklists[category] || [];
-
-        categoryChecklist.forEach(item => {
-
-          if (!checklist.includes(item)) {
-            checklist.push(item);
-          }
-        });
-      });
-
-      let checklistResults = [];
-
-      checklist.forEach((item, index) => {
-
-        checklistResults.push({
-          item: item,
-          status: document.getElementById(`status-${index}`).value,
-          remarks: document.getElementById(`remark-${index}`).value
-        });
-      });
-
-      const existingIndex = validationData.findIndex(v => v.page === currentPageNum);
-
-      const pageData = {
-        page: currentPageNum,
-        drawingTypes: selectedCategories,
-        skus: selectedSkus,
-        roomName,
-        overallRemarks,
-        checklistResults
-      };
-
-      if (existingIndex >= 0) {
-        validationData[existingIndex] = pageData;
-      } else {
-        validationData.push(pageData);
-      }
-
-      alert(`Validation saved for Page ${currentPageNum}`);
-    }
-
-    function loadSavedValidation(pageNum) {
-
-      const saved = validationData.find(v => v.page === pageNum);
-
-      if (!saved) {
-
-        document.getElementById('drawingType').value = '';
-        document.getElementById('skuSelect').value = '';
-        document.getElementById('overallRemarks').value = '';
-        document.getElementById('checklistContainer').innerHTML = '';
-
-        return;
-      }
-
-      document.getElementById('drawingType').value = saved.drawingType;
-
-      loadChecklist();
-
-      document.getElementById('skuSelect').value = saved.sku;
-
-      document.getElementById('overallRemarks').value = saved.overallRemarks;
-
-      saved.checklistResults.forEach((item, index) => {
-
-        document.getElementById(`status-${index}`).value = item.status;
-
-        document.getElementById(`remark-${index}`).value = item.remarks;
-      });
-    }
-
-    function extractBoqData(text) {
-
-      const lines = text.split(/
-|  /);
-
-      lines.forEach(line => {
-
-        const cleaned = line.trim();
-
-        if (cleaned.length < 3) return;
-
-        if (
-          cleaned.toLowerCase().includes('bedroom') ||
-          cleaned.toLowerCase().includes('kitchen') ||
-          cleaned.toLowerCase().includes('living') ||
-          cleaned.toLowerCase().includes('toilet') ||
-          cleaned.toLowerCase().includes('bathroom') ||
-          cleaned.toLowerCase().includes('foyer') ||
-          cleaned.toLowerCase().includes('balcony')
-        ) {
-          roomData.push(cleaned);
-        }
-
-        if (
-          cleaned.toLowerCase().includes('false ceiling') ||
-          cleaned.toLowerCase().includes('electrical') ||
-          cleaned.toLowerCase().includes('wardrobe') ||
-          cleaned.toLowerCase().includes('vanity') ||
-          cleaned.toLowerCase().includes('plumbing') ||
-          cleaned.toLowerCase().includes('flooring') ||
-          cleaned.toLowerCase().includes('panel') ||
-          cleaned.toLowerCase().includes('tv unit')
-        ) {
-          skuData.push(cleaned);
-        }
-      });
-    }
-
-    function generateFinalReport() {
-
-      if (validationData.length === 0) {
-        alert('No validations saved');
-        return;
-      }
-
-      let html = `
-        <h2>Final Validation Report</h2>
-
-        <table>
-          <thead>
-            <tr>
-              <th>Page</th>
-              <th>Room</th>
-              <th>Drawing Types</th>
-              <th>SKUs</th>
-              <th>Checklist Item</th>
-              <th>Status</th>
-              <th>Remarks</th>
-            </tr>
-          </thead>
-          <tbody>
-      `;
-
-      validationData.forEach(page => {
-
-        page.checklistResults.forEach(item => {
-
-          if (item.status === 'Missing') {
-
-            html += `
-              <tr>
-                <td>${page.page}</td>
-                <td>${page.roomName}</td>
-                <td>${page.drawingTypes.join(', ')}</td>
-                <td>${page.skus.join(', ')}</td>
-                <td>${item.item}</td>
-                <td>${item.status}</td>
-                <td>${item.remarks}</td>
-              </tr>
-            `;
-          }
-        });
-      });
-
-      html += `
-          </tbody>
-        </table>
-      `;
-
-      document.getElementById('reportSection').innerHTML = html;
-    }
-
-  </script>
+</script>
 
 </body>
 </html>
