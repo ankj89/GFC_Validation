@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GFC Validation App</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background: #f4f4f4;
+      padding: 20px;
+    }
+
+    .top-bar {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .container {
+      display: flex;
+      gap: 20px;
+      height: calc(100vh - 120px);
+    }
+
+    .viewer {
+      flex: 2;
+      background: white;
+      border-radius: 10px;
+      padding: 10px;
+      overflow: auto;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .panel {
+      flex: 1;
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      overflow-y: auto;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    canvas {
+      width: 100%;
+      border: 1px solid #ddd;
+    }
+
+    h2 {
+      margin-bottom: 15px;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 15px;
+      margin-bottom: 5px;
+    }
+
+    select,
+    textarea,
+    input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .checklist-item {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+    }
+
+    .checklist-item h4 {
+      margin-bottom: 10px;
+    }
+
+    .status-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .status-buttons button {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      color: white;
+    }
+
+    .present {
+      background: #28a745;
+    }
+
+    .missing {
+      background: #dc3545;
+    }
+
+    .na {
+      background: #6c757d;
+    }
+
+    .navigation {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+
+    .navigation button,
+    .action-btn {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #007bff;
+      color: white;
+    }
+
+    .report-section {
+      margin-top: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    table th,
+    table td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+
+    table th {
+      background: #f1f1f1;
+    }
+
+    .page-info {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <div>
+      <label>Upload GFC PDF</label>
+      <input type="file" id="pdfUpload" accept="application/pdf">
+    </div>
+
+    <div>
+      <label>Upload Converted Order (Excel)</label>
+      <input type="file" id="excelUpload" accept=".xlsx,.xls,.csv">
+    </div>
+
+    <button class="action-btn" onclick="generateFinalReport()">
+      Generate Report
+    </button>
+  </div>
+
+  <div class="container">
+
+    <div class="viewer">
+      <canvas id="pdfCanvas"></canvas>
+
+      <div class="page-info">
+        Page <span id="currentPage">0</span> of <span id="totalPages">0</span>
+      </div>
+
+      <div class="navigation">
+        <button onclick="prevPage()">Previous</button>
+        <button onclick="nextPage()">Next</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Validation Panel</h2>
+
+      <label>Drawing Type</label>
+      <select id="drawingType" onchange="loadChecklist()">
+        <option value="">Select</option>
+        <option value="false_ceiling">False Ceiling</option>
+        <option value="electrical">Electrical</option>
+        <option value="plumbing">Plumbing</option>
+        <option value="flooring">Flooring</option>
+        <option value="elevation">Elevation</option>
+      </select>
+
+      <label>SKU</label>
+      <select id="skuSelect">
+        <option value="">Select SKU</option>
+      </select>
+
+      <div id="checklistContainer"></div>
+
+      <label>Overall Remarks</label>
+      <textarea id="overallRemarks"></textarea>
+
+      <button class="action-btn" style="margin-top:20px; width:100%;" onclick="savePageValidation()">
+        Save Validation
+      </button>
+    </div>
+
+  </div>
+
+  <div class="report-section" id="reportSection"></div>
+
+  <script>
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    let pdfDoc = null;
+    let currentPageNum = 1;
+    let totalPages = 0;
+
+    let skuData = [];
+    let validationData = [];
+
+    const checklists = {
+      false_ceiling: [
+        'Ceiling Layout',
+        'Ceiling Levels',
+        'Section Details',
+        'Light Coordination',
+        'AC Coordination',
+        'Legend',
+        'Dimensions'
+      ],
+
+      electrical: [
+        'Switchboard Layout',
+        'Circuit Routing',
+        'DB Connection',
+        'Load Details',
+        'Ceiling Looping',
+        'Legend'
+      ],
+
+      plumbing: [
+        'Drain Point',
+        'Water Inlet',
+        'Trap Detail',
+        'Isometric',
+        'Legend'
+      ],
+
+      flooring: [
+        'Tile Layout',
+        'Pattern Detail',
+        'Skirting Detail',
+        'Dimensions'
+      ],
+
+      elevation: [
+        'Dimensions',
+        'Material Details',
+        'Section Reference',
+        'Hardware Details'
+      ]
+    };
+
+    document.getElementById('pdfUpload').addEventListener('change', async function(e) {
+
+      const file = e.target.files[0];
+
+      if (!file) return;
+
+      const fileReader = new FileReader();
+
+      fileReader.onload = async function() {
+
+        const typedArray = new Uint8Array(this.result);
+
+        pdfDoc = await pdfjsLib.getDocument(typedArray).promise;
+
+        totalPages = pdfDoc.numPages;
+
+        document.getElementById('totalPages').innerText = totalPages;
+
+        renderPage(currentPageNum);
+      };
+
+      fileReader.readAsArrayBuffer(file);
+    });
+
+    async function renderPage(num) {
+
+      const page = await pdfDoc.getPage(num);
+
+      const canvas = document.getElementById('pdfCanvas');
+      const ctx = canvas.getContext('2d');
+
+      const viewport = page.getViewport({ scale: 1.5 });
+
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      await page.render({
+        canvasContext: ctx,
+        viewport: viewport
+      }).promise;
+
+      document.getElementById('currentPage').innerText = num;
+
+      loadSavedValidation(num);
+    }
+
+    function prevPage() {
+      if (currentPageNum <= 1) return;
+      currentPageNum--;
+      renderPage(currentPageNum);
+    }
+
+    function nextPage() {
+      if (currentPageNum >= totalPages) return;
+      currentPageNum++;
+      renderPage(currentPageNum);
+    }
+
+    document.getElementById('excelUpload').addEventListener('change', function(e) {
+
+      const file = e.target.files[0];
+
+      const reader = new FileReader();
+
+      reader.onload = function(event) {
+
+        const data = new Uint8Array(event.target.result);
+
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        const sheetName = workbook.SheetNames[0];
+
+        const worksheet = workbook.Sheets[sheetName];
+
+        skuData = XLSX.utils.sheet_to_json(worksheet);
+
+        populateSkuDropdown();
+      };
+
+      reader.readAsArrayBuffer(file);
+    });
+
+    function populateSkuDropdown() {
+
+      const skuSelect = document.getElementById('skuSelect');
+
+      skuSelect.innerHTML = '<option value="">Select SKU</option>';
+
+      skuData.forEach(item => {
+
+        const option = document.createElement('option');
+
+        option.value = item.SKU || item.sku;
+
+        option.textContent = `${item.SKU || item.sku} - ${item.Description || item.description || ''}`;
+
+        skuSelect.appendChild(option);
+      });
+    }
+
+    function loadChecklist() {
+
+      const drawingType = document.getElementById('drawingType').value;
+
+      const container = document.getElementById('checklistContainer');
+
+      container.innerHTML = '';
+
+      if (!drawingType) return;
+
+      const checklist = checklists[drawingType] || [];
+
+      checklist.forEach((item, index) => {
+
+        const div = document.createElement('div');
+
+        div.className = 'checklist-item';
+
+        div.innerHTML = `
+          <h4>${item}</h4>
+
+          <div class="status-buttons">
+            <button class="present" onclick="setStatus(${index}, 'Present')">Present</button>
+            <button class="missing" onclick="setStatus(${index}, 'Missing')">Missing</button>
+            <button class="na" onclick="setStatus(${index}, 'N/A')">N/A</button>
+          </div>
+
+          <input type="hidden" id="status-${index}" value="">
+
+          <textarea id="remark-${index}" placeholder="Remarks"></textarea>
+        `;
+
+        container.appendChild(div);
+      });
+    }
+
+    function setStatus(index, status) {
+      document.getElementById(`status-${index}`).value = status;
+    }
+
+    function savePageValidation() {
+
+      const drawingType = document.getElementById('drawingType').value;
+      const sku = document.getElementById('skuSelect').value;
+      const overallRemarks = document.getElementById('overallRemarks').value;
+
+      if (!drawingType || !sku) {
+        alert('Please select drawing type and SKU');
+        return;
+      }
+
+      const checklist = checklists[drawingType] || [];
+
+      let checklistResults = [];
+
+      checklist.forEach((item, index) => {
+
+        checklistResults.push({
+          item: item,
+          status: document.getElementById(`status-${index}`).value,
+          remarks: document.getElementById(`remark-${index}`).value
+        });
+      });
+
+      const existingIndex = validationData.findIndex(v => v.page === currentPageNum);
+
+      const pageData = {
+        page: currentPageNum,
+        drawingType,
+        sku,
+        overallRemarks,
+        checklistResults
+      };
+
+      if (existingIndex >= 0) {
+        validationData[existingIndex] = pageData;
+      } else {
+        validationData.push(pageData);
+      }
+
+      alert(`Validation saved for Page ${currentPageNum}`);
+    }
+
+    function loadSavedValidation(pageNum) {
+
+      const saved = validationData.find(v => v.page === pageNum);
+
+      if (!saved) {
+
+        document.getElementById('drawingType').value = '';
+        document.getElementById('skuSelect').value = '';
+        document.getElementById('overallRemarks').value = '';
+        document.getElementById('checklistContainer').innerHTML = '';
+
+        return;
+      }
+
+      document.getElementById('drawingType').value = saved.drawingType;
+
+      loadChecklist();
+
+      document.getElementById('skuSelect').value = saved.sku;
+
+      document.getElementById('overallRemarks').value = saved.overallRemarks;
+
+      saved.checklistResults.forEach((item, index) => {
+
+        document.getElementById(`status-${index}`).value = item.status;
+
+        document.getElementById(`remark-${index}`).value = item.remarks;
+      });
+    }
+
+    function generateFinalReport() {
+
+      if (validationData.length === 0) {
+        alert('No validations saved');
+        return;
+      }
+
+      let html = `
+        <h2>Final Validation Report</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Page</th>
+              <th>Drawing Type</th>
+              <th>SKU</th>
+              <th>Checklist Item</th>
+              <th>Status</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      validationData.forEach(page => {
+
+        page.checklistResults.forEach(item => {
+
+          if (item.status === 'Missing') {
+
+            html += `
+              <tr>
+                <td>${page.page}</td>
+                <td>${page.drawingType}</td>
+                <td>${page.sku}</td>
+                <td>${item.item}</td>
+                <td>${item.status}</td>
+                <td>${item.remarks}</td>
+              </tr>
+            `;
+          }
+        });
+      });
+
+      html += `
+          </tbody>
+        </table>
+      `;
+
+      document.getElementById('reportSection').innerHTML = html;
+    }
+
+  </script>
+
+</body>
+</html>
