@@ -628,33 +628,32 @@ function autoSuggestCategories() {
 
     const selectedItems =
         Array.from(
-            itemDropdown
-                .selectedOptions
+            itemDropdown.selectedOptions
         ).map(
-            option =>
-                option.value
+            option => option.value
         );
 
     const categories =
         new Set();
 
-    selectedItems.forEach(
-        item => {
+    selectedItems.forEach(item => {
 
-            const data =
-                projectMaster
-                    .itemCategoryMap[
-                    item
-                ];
+        const itemData =
+            projectMaster
+                .itemCategoryMap[
+                item
+            ];
 
-            if (
-                !data
-            ) return;
+        if (!itemData) return;
+
+        [
+            itemData.superCategory,
+            itemData.subCategory
+        ].forEach(value => {
 
             const mapped =
                 CATEGORY_MAPPING[
-                    data
-                        .superCategory
+                    value
                 ];
 
             if (
@@ -662,23 +661,20 @@ function autoSuggestCategories() {
             ) {
 
                 mapped.forEach(
-                    category => {
-
+                    category =>
                         categories.add(
                             category
-                        );
-
-                    }
+                        )
                 );
 
             }
 
-        }
-    );
+        });
+
+    });
 
     Array.from(
-        categoryDropdown
-            .options
+        categoryDropdown.options
     ).forEach(option => {
 
         option.selected =
