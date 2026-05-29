@@ -146,6 +146,55 @@ function getRoomSelectedItems() {
     return roomMap;
 }
 
+function getBOQCoverage() {
+
+    const selectedItems =
+        getRoomSelectedItems();
+
+    const report = [];
+
+    Object.keys(
+        projectMaster.roomItemMap
+    ).forEach(room => {
+
+        const boqItems =
+            projectMaster
+            .roomItemMap[
+                room
+            ];
+
+        boqItems.forEach(item => {
+
+            const found =
+
+                selectedItems[room]
+
+                &&
+
+                selectedItems[
+                    room
+                ].has(item);
+
+            report.push({
+
+                room:
+                    room,
+
+                item:
+                    item,
+
+                validated:
+                    found === true
+
+            });
+
+        });
+
+    });
+
+    return report;
+}
+
 // =========================================
 // LOAD PAGE VALIDATION
 // =========================================
@@ -366,54 +415,7 @@ function getValidatedItems() {
 
 }
 
-function getBOQCoverage() {
 
-    const selectedItems =
-        getRoomSelectedItems();
-
-    const report = [];
-
-    Object.keys(
-        projectMaster.roomItemMap
-    ).forEach(room => {
-
-        const boqItems =
-            projectMaster
-            .roomItemMap[
-                room
-            ];
-
-        boqItems.forEach(item => {
-
-            const found =
-
-                selectedItems[room]
-
-                &&
-
-                selectedItems[
-                    room
-                ].has(item);
-
-            report.push({
-
-                room:
-                    room,
-
-                item:
-                    item,
-
-                validated:
-                    found === true
-
-            });
-
-        });
-
-    });
-
-    return report;
-}
 
 // =========================================
 // SUMMARY DATA
