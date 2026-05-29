@@ -100,13 +100,11 @@ async function parseBOQ(pdf) {
     resetProjectMaster();
 
     let currentRoom = "";
+    let currentItem = "";
 
-    let pendingItem = null;
+    for(let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
 
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-
-        const page =
-            await pdf.getPage(pageNum);
+        const page = await pdf.getPage(pageNo);
 
         const textContent =
             await page.getTextContent();
@@ -116,24 +114,22 @@ async function parseBOQ(pdf) {
                 textContent.items
             );
 
-        rows.forEach(rawRow => {
+        for(let i=0;i<rows.length;i++) {
 
             const row =
-                rawRow
-                    .replace(/\s+/g, " ")
-                    .trim();
+                rows[i]
+                .replace(/\s+/g," ")
+                .trim();
 
-            if (!row) return;
+            if(!row) continue;
 
-            // ======================
             // ROOM HEADER
-            // ======================
 
-            if (isActualRoomHeader(row)) {
+            if(isActualRoomHeader(row)) {
 
                 currentRoom = row;
 
-                if (
+                if(
                     !projectMaster.rooms.includes(
                         currentRoom
                     )
@@ -148,139 +144,92 @@ async function parseBOQ(pdf) {
                     ] = [];
                 }
 
-                return;
+                continue;
             }
 
-            // ======================
             // ITEM NAME
-            // ======================
 
-            if (
-                row.startsWith(
-                    "Item Name"
-                )
+            if(
+                row === "Item Name" &&
+                rows[i+1]
             ) {
 
-                const itemName =
-                    row
-                        .replace(
-                            "Item Name",
-                            ""
-                        )
-                        .replace(
-                            ":",
-                            ""
-                        )
-                        .trim();
+                currentItem =
+                    rows[i+1]
+                    .trim();
 
-                if (
-                    itemName &&
-                    currentRoom
+                if(
+                    currentRoom &&
+                    currentItem
                 ) {
-
-                    pendingItem =
-                        itemName;
 
                     addItemToRoom(
                         currentRoom,
-                        itemName
+                        currentItem
                     );
                 }
 
-                return;
+                continue;
             }
 
-            // ======================
             // SUPER CATEGORY
-            // ======================
 
-            if (
-                row.startsWith(
-                    "Super Category"
-                )
+            if(
+                row === "Super Category" &&
+                rows[i+1]
             ) {
 
                 const superCategory =
-                    row
-                        .replace(
-                            "Super Category",
-                            ""
-                        )
-                        .replace(
-                            ":",
-                            ""
-                        )
-                        .trim();
+                    rows[i+1]
+                    .trim();
 
-                if (
-                    pendingItem
-                ) {
+                ensureItemMap(
+                    currentItem
+                );
 
-                    ensureItemMap(
-                        pendingItem
-                    );
+                projectMaster
+                    .itemCategoryMap[
+                    currentItem
+                ]
+                .superCategory =
+                    superCategory;
 
-                    projectMaster
-                        .itemCategoryMap[
-                        pendingItem
-                    ]
-                        .superCategory =
-                        superCategory;
-                }
-
-                return;
+                continue;
             }
 
-            // ======================
             // SUB CATEGORY
-            // ======================
 
-            if (
-                row.startsWith(
-                    "Sub Super Category"
-                )
+            if(
+                row ===
+                "Sub Super Category" &&
+                rows[i+1]
             ) {
 
                 const subCategory =
-                    row
-                        .replace(
-                            "Sub Super Category",
-                            ""
-                        )
-                        .replace(
-                            ":",
-                            ""
-                        )
-                        .trim();
+                    rows[i+1]
+                    .trim();
 
-                if (
-                    pendingItem
-                ) {
+                ensureItemMap(
+                    currentItem
+                );
 
-                    ensureItemMap(
-                        pendingItem
-                    );
+                projectMaster
+                    .itemCategoryMap[
+                    currentItem
+                ]
+                .subCategory =
+                    subCategory;
 
-                    projectMaster
-                        .itemCategoryMap[
-                        pendingItem
-                    ]
-                        .subCategory =
-                        subCategory;
-                }
-
-                return;
+                continue;
             }
-
-        });
-
+        }
     }
 
+    populateRoomDropdown();
+
     console.log(
-        "Project Master",
         projectMaster
     );
-
 }
 
 // =========================================
@@ -291,43 +240,43 @@ function isActualRoomHeader(
     text
 ) {
 
-    const excluded = [
+    const ignore = [
 
         "Item Name",
         "SKU",
         "Qty",
-        "Amount",
         "Rate",
+        "Amount",
         "Super Category",
         "Sub Super Category",
         "Description"
 
     ];
 
-    if (
-        excluded.some(
-            e =>
-                text.includes(e)
+    if(
+        ignore.some(
+            x =>
+            text.includes(x)
         )
     ) {
         return false;
     }
 
-    const upper =
-        text.toUpperCase();
-
     return (
 
-        upper === text &&
+        text ===
+        text.toUpperCase()
 
-        text.length > 2 &&
+        &&
+
+        text.length > 2
+
+        &&
 
         text.length < 50
 
     );
-
 }
-
 // =========================================
 // BUILD ROWS
 // =========================================
