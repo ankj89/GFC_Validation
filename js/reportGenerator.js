@@ -298,17 +298,39 @@ function buildChecklistSummary(page) {
 
     let text = "";
 
-    page.checklist.forEach(item => {
+    (page.checklist || []).forEach(item => {
+
+        const status =
+            item.status || "";
+
+        const remark =
+            item.remark || "";
+
+        const hasRemark =
+            remark.trim() !== "";
 
         if (
-            item.status === "Absent"
+
+            status === "Absent"
+
+            ||
+
+            hasRemark
+
         ) {
 
             text +=
 
                 item.title +
+
                 " : " +
-                item.remark +
+
+                status.toUpperCase() +
+
+                " : " +
+
+                remark +
+
                 "\n";
 
         }
@@ -320,7 +342,9 @@ function buildChecklistSummary(page) {
     ) {
 
         text +=
+
             "\nOverall : " +
+
             page.overallRemarks;
 
     }
