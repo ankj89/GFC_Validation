@@ -130,16 +130,47 @@ async function parseBOQ(
 // =========================================
 // ITEM BLOCK
 // =========================================
+function cleanRoomName(
+    room
+) {
 
+    if (!room) {
+        return "";
+    }
+
+    return room
+
+        .replace(
+            /\s*Elevation\s*:\s*[A-Z0-9\-]+/gi,
+            ""
+        )
+
+        .replace(
+            /\s*Section\s*:\s*[A-Z0-9\-]+/gi,
+            ""
+        )
+
+        .replace(
+            /\s*Drawing\s*:\s*[A-Z0-9\-]+/gi,
+            ""
+        )
+
+        .trim();
+
+}
 function parseItemBlock(
     block
 ) {
 
-    const room =
-        extractField(
-            block,
-            "Location"
-        );
+    let room =
+    extractField(
+        block,
+        "Location"
+    );
+
+room = cleanRoomName(
+    room
+);
 
     let item =
         extractField(
@@ -173,6 +204,8 @@ function parseItemBlock(
 // =========================================
 // FIELD EXTRACTION
 // =========================================
+
+
 
 function extractField(
     text,
