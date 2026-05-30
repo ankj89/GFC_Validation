@@ -1,11 +1,11 @@
 // =========================================
-// VALIDATION STORE
+// VALIDATION STORE - VERSION 3
 // =========================================
 
-let validationStore = [];
+window.validationStore = [];
 
 // =========================================
-// SAVE PAGE VALIDATION
+// SAVE CURRENT PAGE
 // =========================================
 
 function saveCurrentPageValidation() {
@@ -15,20 +15,20 @@ function saveCurrentPageValidation() {
             "roomDropdown"
         )?.value || "";
 
-    const selectedItems =
+    const items =
         Array.from(
             document.getElementById(
                 "itemDropdown"
-            ).selectedOptions
+            )?.selectedOptions || []
         ).map(
             option => option.value
         );
 
-    const selectedCategories =
+    const categories =
         Array.from(
             document.getElementById(
                 "categoryDropdown"
-            ).selectedOptions
+            )?.selectedOptions || []
         ).map(
             option => option.value
         );
@@ -48,69 +48,159 @@ function saveCurrentPageValidation() {
             "overallRemarks"
         )?.value || "";
 
-    const checklistResults =
-        getChecklistValidationData();
+    const checklist =
+        collectChecklist();
 
-    const pageNumber =
+    const pageNo =
         getCurrentPageNumber();
-
-    const pageValidation = {
-
-        page: pageNumber,
-
-        room: room,
-
-        items: selectedItems,
-
-        categories: selectedCategories,
-
-        drawingNotAvailable:
-            drawingNotAvailable,
-
-        drawingMissingReason:
-            drawingMissingReason,
-
-        overallRemarks:
-            overallRemarks,
-
-        checklistResults:
-            checklistResults,
-
-        lastUpdated:
-            new Date().toISOString()
-
-    };
 
     const existingIndex =
         validationStore.findIndex(
-            item =>
-                item.page === pageNumber
+            row =>
+                row.pageNo ===
+                pageNo
         );
 
-    if (existingIndex >= 0) {
+    const record = {
+
+        pageNo,
+
+        room,
+
+        items,
+
+        categories,
+
+        checklist,
+
+        drawingNotAvailable,
+
+        drawingMissingReason,
+
+        overallRemarks
+
+    };
+
+    if (
+        existingIndex >= 0
+    ) {
 
         validationStore[
             existingIndex
-        ] = pageValidation;
+        ] = record;
 
-    } else {
+    }
+    else {
 
         validationStore.push(
-            pageValidation
+            record
         );
 
     }
 
     console.log(
         "Validation Saved",
-        pageValidation
+        record
     );
 
     alert(
-        `Page ${pageNumber} saved successfully`
+        `Page ${pageNo} saved`
     );
 
 }
+
+// =========================================
+// CHECKLIST COLLECTION
+// =========================================
+
+function collectChecklist() {
+
+    const rows = [];
+
+    document
+        .querySelectorAll(
+            ".checklist-item"
+        )
+        .forEach(
+            item => {
+
+                const title =
+                    item
+                    .querySelector(
+                        ".checklist-title"
+                    )
+                    ?.textContent || "";
+
+                const status =
+                    item
+                    .querySelector(
+                        'input[type="radio"]:checked'
+                    )
+                    ?.value || "";
+
+                const remark =
+                    item
+                    .querySelector(
+                        ".item-remark"
+                    )
+                    ?.value || "";
+
+                rows.push({
+
+                    title,
+
+                    status,
+
+                    remark
+
+                });
+
+            }
+        );
+
+    return rows;
+
+}
+
+// =========================================
+// PAGE NUMBER
+// =========================================
+
+function getCurrentPageNumber() {
+
+    const pageElement =
+        document.getElementById(
+            "currentPage"
+        );
+
+    if (!pageElement)
+        return 1;
+
+    return Number(
+        pageElement.textContent
+    );
+
+}
+
+// =========================================
+// PAGE LOOKUP
+// =========================================
+
+function getValidationByPage(
+    pageNo
+) {
+
+    return validationStore.find(
+        row =>
+            row.pageNo ===
+            pageNo
+    );
+
+}
+
+// =========================================
+// ROOM COVERAGE
+// =========================================
 
 function getRoomSelectedItems() {
 
@@ -136,7 +226,8 @@ function getRoomSelectedItems() {
 
                     roomMap[
                         page.room
-                    ].add(item);
+                    ]
+                    .add(item);
 
                 }
             );
@@ -147,6 +238,10 @@ function getRoomSelectedItems() {
     return roomMap;
 
 }
+
+// =========================================
+// BOQ COVERAGE
+// =========================================
 
 function getBOQCoverage() {
 
@@ -166,59 +261,60 @@ function getBOQCoverage() {
             return;
         }
 
-        projectMaster
-            .roomItemMap[
+        const boqItems =
+            projectMaster.roomItemMap[
                 room
-            ]
-            .forEach(item => {
+            ] || [];
 
-                let covered =
-                    false;
+        boqItems.forEach(item => {
 
-                // Room specific
+            let covered =
+                false;
 
-                if (
-                    selectedItems[
-                        room
-                    ] &&
-                    selectedItems[
-                        room
-                    ].has(item)
-                ) {
+            // Room specific
 
-                    covered = true;
+            if (
+                selectedItems[
+                    room
+                ] &&
+                selectedItems[
+                    room
+                ].has(item)
+            ) {
 
-                }
+                covered =
+                    true;
 
-                // Full Home
+            }
 
-                if (
-                    selectedItems[
-                        "FULL HOME"
-                    ] &&
-                    selectedItems[
-                        "FULL HOME"
-                    ].has(item)
-                ) {
+            // FULL HOME
 
-                    covered = true;
+            if (
+                selectedItems[
+                    "FULL HOME"
+                ] &&
+                selectedItems[
+                    "FULL HOME"
+                ].has(item)
+            ) {
 
-                }
+                covered =
+                    true;
 
-                coverage.push({
+            }
 
-                    room:
-                        room,
+            coverage.push({
 
-                    item:
-                        item,
+                room,
 
-                    validated:
-                        covered
+                item,
 
-                });
+                validated:
+                    covered
 
             });
+
+        });
 
     });
 
@@ -227,309 +323,128 @@ function getBOQCoverage() {
 }
 
 // =========================================
-// LOAD PAGE VALIDATION
+// MISSING ITEMS
 // =========================================
 
-function loadPageValidation(
-    pageNumber
-) {
+function getMissingBOQItems() {
 
-    const pageData =
-        validationStore.find(
-            item =>
-                item.page === pageNumber
+    return getBOQCoverage()
+        .filter(
+            row =>
+                !row.validated
         );
-
-    if (!pageData) {
-
-        clearValidationForm();
-
-        return;
-    }
-
-    // ROOM
-
-    document.getElementById(
-        "roomDropdown"
-    ).value =
-        pageData.room || "";
-
-    // ITEMS
-
-    const itemDropdown =
-        document.getElementById(
-            "itemDropdown"
-        );
-
-    Array.from(
-        itemDropdown.options
-    ).forEach(option => {
-
-        option.selected =
-            pageData.items.includes(
-                option.value
-            );
-
-    });
-
-    // CATEGORIES
-
-    const categoryDropdown =
-        document.getElementById(
-            "categoryDropdown"
-        );
-
-    Array.from(
-        categoryDropdown.options
-    ).forEach(option => {
-
-        option.selected =
-            pageData.categories.includes(
-                option.value
-            );
-
-    });
-
-    // REBUILD CHECKLIST
-
-    generateChecklist();
-
-    // LOAD CHECKLIST VALUES
-
-    loadChecklistData(
-        pageData.checklistResults
-    );
-
-    // DRAWING STATUS
-
-    document.getElementById(
-        "drawingNotAvailable"
-    ).checked =
-        pageData.drawingNotAvailable;
-
-    document.getElementById(
-        "drawingMissingReason"
-    ).value =
-        pageData.drawingMissingReason;
-
-    document.getElementById(
-        "overallRemarks"
-    ).value =
-        pageData.overallRemarks;
 
 }
 
 // =========================================
-// CLEAR FORM
+// DRAWING NOT AVAILABLE
 // =========================================
 
-function clearValidationForm() {
+function getDrawingNotAvailablePages() {
 
-    document.getElementById(
-        "roomDropdown"
-    ).value = "";
-
-    document.getElementById(
-        "drawingNotAvailable"
-    ).checked = false;
-
-    document.getElementById(
-        "drawingMissingReason"
-    ).value = "";
-
-    document.getElementById(
-        "overallRemarks"
-    ).value = "";
-
-    // CLEAR ITEMS
-
-    const itemDropdown =
-        document.getElementById(
-            "itemDropdown"
-        );
-
-    Array.from(
-        itemDropdown.options
-    ).forEach(option => {
-
-        option.selected = false;
-
-    });
-
-    // CLEAR CATEGORIES
-
-    const categoryDropdown =
-        document.getElementById(
-            "categoryDropdown"
-        );
-
-    Array.from(
-        categoryDropdown.options
-    ).forEach(option => {
-
-        option.selected = false;
-
-    });
-
-    checklistContainer.innerHTML = "";
-
-}
-
-// =========================================
-// GET ALL VALIDATIONS
-// =========================================
-
-function getAllValidations() {
-
-    return validationStore;
-
-}
-
-// =========================================
-// GET PAGE VALIDATION
-// =========================================
-
-function getValidationByPage(
-    pageNumber
-) {
-
-    return validationStore.find(
-        item =>
-            item.page === pageNumber
+    return validationStore.filter(
+        page =>
+            page.drawingNotAvailable
     );
 
 }
 
 // =========================================
-// DELETE PAGE VALIDATION
+// COVERED ITEMS
 // =========================================
 
-function deletePageValidation(
-    pageNumber
-) {
+function getCoveredBOQItems() {
 
-    validationStore =
-        validationStore.filter(
-            item =>
-                item.page !== pageNumber
+    return getBOQCoverage()
+        .filter(
+            row =>
+                row.validated
         );
 
 }
 
 // =========================================
-// COVERAGE REPORT DATA
+// SUMMARY
 // =========================================
 
-function getValidatedItems() {
+function getCoverageSummary() {
 
-    const validatedItems = [];
+    const coverage =
+        getBOQCoverage();
 
-    validationStore.forEach(page => {
+    const total =
+        coverage.length;
 
-        page.items.forEach(item => {
+    const covered =
+        coverage.filter(
+            row =>
+                row.validated
+        ).length;
 
-            validatedItems.push({
+    const missing =
+        total -
+        covered;
 
-                room: page.room,
+    return {
 
-                item: item,
+        total,
 
-                page: page.page
+        covered,
 
-            });
+        missing,
 
-        });
+        percentage:
 
-    });
+            total === 0
+                ? 0
+                : Math.round(
+                    (
+                        covered /
+                        total
+                    ) * 100
+                )
 
-    return validatedItems;
-
-}
-
-
-
-// =========================================
-// SUMMARY DATA
-// =========================================
-
-function getValidationSummary() {
-
-    return validationStore.map(
-        page => {
-
-            const totalChecks =
-                page.checklistResults
-                    .length;
-
-            const present =
-                page.checklistResults
-                    .filter(
-                        item =>
-                            item.status ===
-                            "Present"
-                    )
-                    .length;
-
-            const absent =
-                page.checklistResults
-                    .filter(
-                        item =>
-                            item.status ===
-                            "Absent"
-                    )
-                    .length;
-
-            const na =
-                page.checklistResults
-                    .filter(
-                        item =>
-                            item.status ===
-                            "NA"
-                    )
-                    .length;
-
-            return {
-
-                page:
-                    page.page,
-
-                room:
-                    page.room,
-
-                itemCount:
-                    page.items.length,
-
-                categoryCount:
-                    page.categories.length,
-
-                totalChecks:
-                    totalChecks,
-
-                present:
-                    present,
-
-                absent:
-                    absent,
-
-                na:
-                    na
-
-            };
-
-        }
-    );
+    };
 
 }
 
 // =========================================
-// SAVE BUTTON
+// RESET
 // =========================================
 
-document
-    .getElementById(
-        "saveValidationBtn"
-    )
-    ?.addEventListener(
-        "click",
-        saveCurrentPageValidation
-    );
+function resetValidationStore() {
+
+    validationStore.length = 0;
+
+}
+
+// =========================================
+// DEBUG
+// =========================================
+
+window.showCoverage =
+    function () {
+
+        console.table(
+            getBOQCoverage()
+        );
+
+    };
+
+window.showMissingItems =
+    function () {
+
+        console.table(
+            getMissingBOQItems()
+        );
+
+    };
+
+window.showValidationStore =
+    function () {
+
+        console.table(
+            validationStore
+        );
+
+    };
