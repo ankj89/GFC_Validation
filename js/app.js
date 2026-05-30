@@ -296,22 +296,7 @@ function getCurrentItems() {
 
 }
 
-function getCurrentCategories() {
 
-    const categoryDropdown =
-        document.getElementById(
-            "categoryDropdown"
-        );
-
-    if (!categoryDropdown) {
-        return [];
-    }
-
-    return getSelectedValues(
-        categoryDropdown
-    );
-
-}
 
 // =========================================
 // DEBUG
