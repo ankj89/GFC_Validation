@@ -4,13 +4,18 @@
 <head>
 
     <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1">
 
-    <title>GFC Validation Tool</title>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0">
 
-    <link rel="stylesheet"
-          href="css/style.css">
+    <title>
+        GFC Validation Tool V3
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="css/style.css">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
@@ -20,25 +25,23 @@
 
 <body>
 
+<!-- ===================================== -->
+<!-- HEADER -->
+<!-- ===================================== -->
+
 <header>
 
-    <h1>GFC Validation Tool</h1>
+    <h1>
+        GFC Validation Tool - Version 3
+    </h1>
 
 </header>
 
+<!-- ===================================== -->
+<!-- UPLOADS -->
+<!-- ===================================== -->
+
 <section class="upload-section">
-
-    <div class="upload-card">
-
-        <label>
-            Upload GFC Docket PDF
-        </label>
-
-        <input type="file"
-               id="gfcPdfInput"
-               accept=".pdf">
-
-    </div>
 
     <div class="upload-card">
 
@@ -46,24 +49,45 @@
             Upload BOQ PDF
         </label>
 
-        <input type="file"
-               id="boqPdfInput"
-               accept=".pdf">
+        <input
+            type="file"
+            id="boqPdfInput"
+            accept=".pdf">
+
+    </div>
+
+    <div class="upload-card">
+
+        <label>
+            Upload GFC PDF
+        </label>
+
+        <input
+            type="file"
+            id="gfcPdfInput"
+            accept=".pdf">
 
     </div>
 
 </section>
+
+<!-- ===================================== -->
+<!-- BOQ REVIEW -->
+<!-- ===================================== -->
+
 <section
     id="boqReviewSection"
-    style="display:none; padding:20px;">
+    style="display:none;">
 
     <h2>
         BOQ Review
     </h2>
 
     <p>
-        Review extracted Room & Item mappings.
+
+        Review extracted Room and Item mappings.
         Add missing rows if parser missed anything.
+
     </p>
 
     <table
@@ -96,64 +120,99 @@
 
     </table>
 
-    <button
-        id="addBoqRowBtn">
+    <div
+        style="
+            display:flex;
+            gap:10px;
+            margin-top:20px;
+        ">
 
-        Add Row
+        <button
+            id="addBoqRowBtn">
 
-    </button>
+            Add Row
 
-    <button
-        id="continueValidationBtn">
+        </button>
 
-        Continue To Validation
+        <button
+            id="continueValidationBtn">
 
-    </button>
+            Continue To Validation
+
+        </button>
+
+    </div>
 
 </section>
 
+<!-- ===================================== -->
+<!-- VALIDATION -->
+<!-- ===================================== -->
 
-
-
-    
-<section class="main-layout">
+<section
+    class="main-layout"
+    style="display:none;">
 
     <!-- LEFT -->
 
     <div class="viewer-panel">
 
-        <div class="viewer-toolbar">
+        <div
+            class="viewer-toolbar">
 
-            <button id="prevPageBtn">
+            <button
+                id="prevPageBtn">
+
                 Previous
+
             </button>
 
             <span>
+
                 Page
-                <span id="currentPage">
+
+                <span
+                    id="currentPage">
+
                     1
+
                 </span>
+
                 /
-                <span id="totalPages">
+
+                <span
+                    id="totalPages">
+
                     0
+
                 </span>
+
             </span>
 
-            <button id="nextPageBtn">
+            <button
+                id="nextPageBtn">
+
                 Next
+
             </button>
 
         </div>
 
-        <canvas id="pdfCanvas"></canvas>
+        <canvas
+            id="pdfCanvas">
+
+        </canvas>
 
     </div>
 
     <!-- RIGHT -->
 
-    <div class="validation-panel">
+    <div
+        class="validation-panel">
 
-        <h2>Validation</h2>
+        <h2>
+            Validation
+        </h2>
 
         <!-- ROOM -->
 
@@ -161,7 +220,8 @@
             Room
         </label>
 
-        <select id="roomDropdown">
+        <select
+            id="roomDropdown">
 
             <option value="">
                 Select Room
@@ -172,33 +232,40 @@
         <!-- ITEMS -->
 
         <label>
-           Which Item Names are visible in this drawing?
+
+            Which Item Names are visible in this drawing?
+
         </label>
 
-        <select id="itemDropdown"
-                multiple>
+        <select
+            id="itemDropdown"
+            multiple>
 
         </select>
+
+        <!-- MANUAL ITEM -->
+
         <label>
-    Add Item if missing from BOQ extraction
-</label>
+            Add Item if missing
+        </label>
 
-<div class="manual-item-container">
+        <div
+            class="manual-item-container">
 
-    <input
-        type="text"
-        id="manualItemInput"
-        placeholder="Enter Item Name / SKU">
+            <input
+                type="text"
+                id="manualItemInput"
+                placeholder="Enter Item Name">
 
-    <button
-        type="button"
-        id="addManualItemBtn">
+            <button
+                type="button"
+                id="addManualItemBtn">
 
-        Add Item
+                Add Item
 
-    </button>
+            </button>
 
-</div>
+        </div>
 
         <!-- CATEGORY -->
 
@@ -206,8 +273,9 @@
             Drawing Category
         </label>
 
-        <select id="categoryDropdown"
-                multiple>
+        <select
+            id="categoryDropdown"
+            multiple>
 
             <option value="falseCeiling">
                 False Ceiling
@@ -233,16 +301,26 @@
                 Elevation
             </option>
 
+            <option value="ac">
+                AC
+            </option>
+
+            <option value="civil">
+                Civil
+            </option>
+
         </select>
 
-        <!-- DRAWING STATUS -->
+        <!-- DRAWING NOT AVAILABLE -->
 
-        <div class="drawing-status">
+        <div
+            class="drawing-status">
 
             <label>
 
-                <input type="checkbox"
-                       id="drawingNotAvailable">
+                <input
+                    type="checkbox"
+                    id="drawingNotAvailable">
 
                 Drawing Not Available
 
@@ -251,13 +329,15 @@
         </div>
 
         <textarea
-                id="drawingMissingReason"
-                placeholder="Reason if drawing not available">
+            id="drawingMissingReason"
+            placeholder="Reason if drawing not available">
+
         </textarea>
 
         <!-- CHECKLIST -->
 
-        <div id="checklistContainer">
+        <div
+            id="checklistContainer">
 
         </div>
 
@@ -267,11 +347,13 @@
             Overall Remarks
         </label>
 
-        <textarea id="overallRemarks">
+        <textarea
+            id="overallRemarks">
 
         </textarea>
 
-        <button id="saveValidationBtn">
+        <button
+            id="saveValidationBtn">
 
             Save Page Validation
 
@@ -281,41 +363,66 @@
 
 </section>
 
-<!-- REPORT SECTION -->
+<!-- ===================================== -->
+<!-- REPORTS -->
+<!-- ===================================== -->
 
-<section class="report-section">
+<section
+    class="report-section">
 
-    <h2>Reports</h2>
+    <h2>
+        Reports
+    </h2>
 
-    <button id="generateReportBtn">
+    <button
+        id="generateReportBtn">
 
         Generate Reports
 
     </button>
 
-    <button id="exportExcelBtn">
+    <button
+        id="exportExcelBtn">
 
         Export Excel
 
     </button>
 
-    <div id="reportContainer">
+    <div
+        id="reportContainer">
 
     </div>
 
 </section>
 
+<!-- ===================================== -->
+<!-- CONFIG -->
+<!-- ===================================== -->
+
 <script src="config/checklistConfig.js"></script>
+
 <script src="config/categoryMapping.js"></script>
 
-<script src="js/validationStore.js"></script>
-<script src="js/checklistEngine.js"></script>
+<!-- ===================================== -->
+<!-- CORE -->
+<!-- ===================================== -->
+
 <script src="js/pdfViewer.js"></script>
+
 <script src="js/boqParser.js"></script>
-        <script src="js/boqReview.js"></script>
+
+<script src="js/boqReview.js"></script>
+
+<script src="js/checklistEngine.js"></script>
+
+<script src="js/validationStore.js"></script>
+
 <script src="js/reportGenerator.js"></script>
+
 <script src="js/excelExport.js"></script>
+
 <script src="js/app.js"></script>
 
 </body>
+
 </html>
