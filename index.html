@@ -53,7 +53,69 @@
     </div>
 
 </section>
+<section
+    id="boqReviewSection"
+    style="display:none; padding:20px;">
 
+    <h2>
+        BOQ Review
+    </h2>
+
+    <p>
+        Review extracted Room & Item mappings.
+        Add missing rows if parser missed anything.
+    </p>
+
+    <table
+        class="report-table">
+
+        <thead>
+
+            <tr>
+
+                <th>
+                    Room
+                </th>
+
+                <th>
+                    Item Name
+                </th>
+
+                <th>
+                    Action
+                </th>
+
+            </tr>
+
+        </thead>
+
+        <tbody
+            id="boqReviewTableBody">
+
+        </tbody>
+
+    </table>
+
+    <button
+        id="addBoqRowBtn">
+
+        Add Row
+
+    </button>
+
+    <button
+        id="continueValidationBtn">
+
+        Continue To Validation
+
+    </button>
+
+</section>
+
+
+
+
+    
 <section class="main-layout">
 
     <!-- LEFT -->
@@ -248,6 +310,7 @@
 
 <script src="js/validationStore.js"></script>
 <script src="js/checklistEngine.js"></script>
+    <script src="js/boqReview.js"></script>
 <script src="js/pdfViewer.js"></script>
 <script src="js/boqParser.js"></script>
 <script src="js/reportGenerator.js"></script>
