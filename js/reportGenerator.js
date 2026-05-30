@@ -1,626 +1,508 @@
 // =========================================
-// REPORT GENERATOR
+// REPORT GENERATOR - VERSION 3
 // =========================================
 
-function generateAllReports() {
+function generateReports() {
 
     const container =
         document.getElementById(
             "reportContainer"
         );
 
+    if (!container)
+        return;
+
     container.innerHTML = "";
 
-    generateValidationRegister(
+    generateSummaryCard(
         container
     );
 
-    generateSummaryReport(
+    generateDetailedValidationReport(
         container
     );
 
-    generateDAActionReport(
+    generateMissingBOQReport(
         container
     );
 
-    generateMissingDrawingReport(
+    generateDrawingNotAvailableReport(
         container
     );
 
-    generateBOQCoverageReport(
+    generateRoomCoverageReport(
         container
     );
 
 }
 
 // =========================================
-// REPORT SECTION
+// SUMMARY
 // =========================================
 
-function createReportSection(
-    title
+function generateSummaryCard(
+    container
 ) {
 
-    const section =
-        document.createElement("div");
+    const summary =
+        getCoverageSummary();
 
-    section.className =
-        "report-block";
+    const div =
+        document.createElement(
+            "div"
+        );
 
-    section.innerHTML = `
-        <h3>${title}</h3>
+    div.innerHTML = `
+
+        <h3>
+            Coverage Summary
+        </h3>
+
+        <table class="report-table">
+
+            <tr>
+                <th>
+                    Metric
+                </th>
+                <th>
+                    Value
+                </th>
+            </tr>
+
+            <tr>
+                <td>
+                    Total BOQ Items
+                </td>
+                <td>
+                    ${summary.total}
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                    Covered Items
+                </td>
+                <td>
+                    ${summary.covered}
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                    Missing Items
+                </td>
+                <td>
+                    ${summary.missing}
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                    Coverage %
+                </td>
+                <td>
+                    ${summary.percentage}%
+                </td>
+            </tr>
+
+        </table>
+
     `;
 
-    return section;
+    container.appendChild(
+        div
+    );
 
 }
 
 // =========================================
-// TABLE CREATOR
+// DETAILED VALIDATION
 // =========================================
 
-function createTable(
-    headers,
-    rows
-) {
-
-    const table =
-        document.createElement("table");
-
-    table.className =
-        "report-table";
-
-    const thead =
-        document.createElement(
-            "thead"
-        );
-
-    const headerRow =
-        document.createElement(
-            "tr"
-        );
-
-    headers.forEach(header => {
-
-        const th =
-            document.createElement(
-                "th"
-            );
-
-        th.textContent =
-            header;
-
-        headerRow.appendChild(
-            th
-        );
-
-    });
-
-    thead.appendChild(
-        headerRow
-    );
-
-    table.appendChild(
-        thead
-    );
-
-    const tbody =
-        document.createElement(
-            "tbody"
-        );
-
-    rows.forEach(row => {
-
-        const tr =
-            document.createElement(
-                "tr"
-            );
-
-        row.forEach(value => {
-
-            const td =
-                document.createElement(
-                    "td"
-                );
-
-            td.textContent =
-                value;
-
-            tr.appendChild(td);
-
-        });
-
-        tbody.appendChild(tr);
-
-    });
-
-    table.appendChild(
-        tbody
-    );
-
-    return table;
-
-}
-
-// =========================================
-// REPORT 1
-// VALIDATION REGISTER
-// =========================================
-
-function generateValidationRegister(
+function generateDetailedValidationReport(
     container
 ) {
 
-    const section =
-        createReportSection(
-            "Validation Register"
+    const div =
+        document.createElement(
+            "div"
         );
 
-    const rows = [];
+    let html = `
+
+        <h3>
+            Detailed Validation Report
+        </h3>
+
+        <table class="report-table">
+
+        <tr>
+
+            <th>Page</th>
+            <th>Room</th>
+            <th>Items</th>
+            <th>Categories</th>
+            <th>Remarks</th>
+
+        </tr>
+
+    `;
 
     validationStore.forEach(
         page => {
 
-            page.checklistResults
-                .forEach(item => {
+            html += `
 
-                    rows.push([
+                <tr>
 
-                        page.page,
+                    <td>
+                        ${page.pageNo}
+                    </td>
 
-                        page.room,
+                    <td>
+                        ${page.room}
+                    </td>
 
-                        page.items.join(
+                    <td>
+                        ${page.items.join(
                             ", "
-                        ),
+                        )}
+                    </td>
 
-                        item.category,
+                    <td>
+                        ${page.categories.join(
+                            ", "
+                        )}
+                    </td>
 
-                        item.checklistItem,
+                    <td>
+                        ${page.overallRemarks || ""}
+                    </td>
 
-                        item.status,
+                </tr>
 
-                        item.remarks
-
-                    ]);
-
-                });
+            `;
 
         }
     );
 
-    section.appendChild(
+    html += `
+        </table>
+    `;
 
-        createTable(
-
-            [
-                "Page",
-                "Room",
-                "Items",
-                "Category",
-                "Checklist Item",
-                "Status",
-                "Remarks"
-            ],
-
-            rows
-
-        )
-
-    );
+    div.innerHTML =
+        html;
 
     container.appendChild(
-        section
+        div
     );
 
 }
 
 // =========================================
-// REPORT 2
-// SUMMARY REPORT
+// MISSING BOQ
 // =========================================
 
-function generateSummaryReport(
+function generateMissingBOQReport(
     container
 ) {
 
-    const section =
-        createReportSection(
-            "Summary Report"
+    const missing =
+        getMissingBOQItems();
+
+    const div =
+        document.createElement(
+            "div"
         );
 
-    const rows = [];
+    let html = `
 
-    getValidationSummary()
-        .forEach(summary => {
+        <h3>
+            Missing BOQ Coverage Report
+        </h3>
 
-            rows.push([
+        <table class="report-table">
 
-                summary.page,
+            <tr>
 
-                summary.room,
+                <th>
+                    Room
+                </th>
 
-                summary.itemCount,
+                <th>
+                    Item
+                </th>
 
-                summary.categoryCount,
+                <th>
+                    Status
+                </th>
 
-                summary.totalChecks,
+            </tr>
 
-                summary.present,
+    `;
 
-                summary.absent,
+    missing.forEach(
+        row => {
 
-                summary.na
+            html += `
 
-            ]);
+                <tr>
 
-        });
+                    <td>
+                        ${row.room}
+                    </td>
 
-    section.appendChild(
+                    <td>
+                        ${row.item}
+                    </td>
 
-        createTable(
+                    <td>
+                        Missing
+                    </td>
 
-            [
-                "Page",
-                "Room",
-                "Items",
-                "Categories",
-                "Checks",
-                "Present",
-                "Absent",
-                "N/A"
-            ],
+                </tr>
 
-            rows
+            `;
 
-        )
-
+        }
     );
 
+    html += `
+        </table>
+    `;
+
+    div.innerHTML =
+        html;
+
     container.appendChild(
-        section
+        div
     );
 
 }
 
 // =========================================
-// REPORT 3
-// DA ACTION REPORT
+// DNA REPORT
 // =========================================
 
-function generateDAActionReport(
+function generateDrawingNotAvailableReport(
     container
 ) {
 
-    const section =
-        createReportSection(
-            "DA Action Items"
+    const pages =
+        getDrawingNotAvailablePages();
+
+    const div =
+        document.createElement(
+            "div"
         );
 
-    const rows = [];
+    let html = `
 
-    validationStore.forEach(
+        <h3>
+            Drawing Not Available Report
+        </h3>
+
+        <table class="report-table">
+
+            <tr>
+
+                <th>
+                    Page
+                </th>
+
+                <th>
+                    Room
+                </th>
+
+                <th>
+                    Reason
+                </th>
+
+            </tr>
+
+    `;
+
+    pages.forEach(
         page => {
 
-            page.checklistResults
-                .forEach(item => {
+            html += `
 
-                    if (
-                        item.status ===
-                        "Absent"
-                    ) {
+                <tr>
 
-                        rows.push([
+                    <td>
+                        ${page.pageNo}
+                    </td>
 
-                            page.page,
+                    <td>
+                        ${page.room}
+                    </td>
 
-                            page.room,
+                    <td>
+                        ${page.drawingMissingReason || ""}
+                    </td>
 
-                            page.items.join(
-                                ", "
-                            ),
+                </tr>
 
-                            item.category,
-
-                            item.checklistItem,
-
-                            item.remarks
-
-                        ]);
-
-                    }
-
-                });
+            `;
 
         }
     );
 
-    section.appendChild(
+    html += `
+        </table>
+    `;
 
-        createTable(
-
-            [
-                "Page",
-                "Room",
-                "Items",
-                "Category",
-                "Missing Item",
-                "Remarks"
-            ],
-
-            rows
-
-        )
-
-    );
+    div.innerHTML =
+        html;
 
     container.appendChild(
-        section
+        div
     );
 
 }
 
 // =========================================
-// REPORT 4
-// MISSING DRAWING REPORT
+// ROOM COVERAGE
 // =========================================
 
-function generateMissingDrawingReport(
+function generateRoomCoverageReport(
     container
 ) {
-
-    const section =
-        createReportSection(
-            "Missing Drawings Report"
-        );
-
-    const rows = [];
-
-    getBOQCoverage()
-    .forEach(item => {
-
-        if(
-            !item.validated
-        ) {
-
-            rows.push([
-
-                item.room,
-
-                item.item,
-
-                "Drawing Not Found"
-
-            ]);
-
-        }
-
-    });
-
-    section.appendChild(
-
-        createTable(
-
-            [
-                "Room",
-                "Item Name",
-                "Status"
-            ],
-
-            rows
-
-        )
-
-    );
-
-    container.appendChild(
-        section
-    );
-
-}
-
-// =========================================
-// REPORT 5
-// BOQ COVERAGE REPORT
-// =========================================
-
-function generateBOQCoverageReport(
-    container
-) {
-
-    const section =
-        createReportSection(
-            "BOQ Coverage Report"
-        );
-
-    const rows = [];
 
     const coverage =
         getBOQCoverage();
 
+    const roomMap = {};
+
     coverage.forEach(
         row => {
 
-            rows.push([
+            if (
+                !roomMap[
+                    row.room
+                ]
+            ) {
 
-                row.room,
+                roomMap[
+                    row.room
+                ] = {
 
-                row.item,
+                    total: 0,
 
+                    covered: 0
+
+                };
+
+            }
+
+            roomMap[
+                row.room
+            ].total++;
+
+            if (
                 row.validated
-                    ? "Yes"
-                    : "No"
+            ) {
 
-            ]);
+                roomMap[
+                    row.room
+                ].covered++;
+
+            }
 
         }
     );
 
-    section.appendChild(
+    const div =
+        document.createElement(
+            "div"
+        );
 
-        createTable(
+    let html = `
 
-            [
-                "Room",
-                "Item Name",
-                "Validated"
-            ],
+        <h3>
+            Room Wise Coverage
+        </h3>
 
-            rows
+        <table class="report-table">
 
-        )
+            <tr>
 
+                <th>
+                    Room
+                </th>
+
+                <th>
+                    Total Items
+                </th>
+
+                <th>
+                    Covered
+                </th>
+
+                <th>
+                    Coverage %
+                </th>
+
+            </tr>
+
+    `;
+
+    Object.keys(
+        roomMap
+    ).forEach(
+        room => {
+
+            const data =
+                roomMap[
+                    room
+                ];
+
+            const percentage =
+                data.total === 0
+                ? 0
+                : Math.round(
+                    (
+                        data.covered /
+                        data.total
+                    ) * 100
+                );
+
+            html += `
+
+                <tr>
+
+                    <td>
+                        ${room}
+                    </td>
+
+                    <td>
+                        ${data.total}
+                    </td>
+
+                    <td>
+                        ${data.covered}
+                    </td>
+
+                    <td>
+                        ${percentage}%
+                    </td>
+
+                </tr>
+
+            `;
+
+        }
     );
+
+    html += `
+        </table>
+    `;
+
+    div.innerHTML =
+        html;
 
     container.appendChild(
-        section
+        div
     );
-
-}
-
-// =========================================
-// EXPORT DATA HELPERS
-// =========================================
-
-function getValidationRegisterData() {
-
-    const data = [];
-
-    validationStore.forEach(
-        page => {
-
-            page.checklistResults
-                .forEach(item => {
-
-                    data.push({
-
-                        Page:
-                            page.page,
-
-                        Room:
-                            page.room,
-
-                        Items:
-                            page.items.join(
-                                ", "
-                            ),
-
-                        Category:
-                            item.category,
-
-                        ChecklistItem:
-                            item.checklistItem,
-
-                        Status:
-                            item.status,
-
-                        Remarks:
-                            item.remarks
-
-                    });
-
-                });
-
-        }
-    );
-
-    return data;
-
-}
-
-function getDAActionData() {
-
-    const data = [];
-
-    validationStore.forEach(
-        page => {
-
-            page.checklistResults
-                .forEach(item => {
-
-                    if (
-                        item.status ===
-                        "Absent"
-                    ) {
-
-                        data.push({
-
-                            Page:
-                                page.page,
-
-                            Room:
-                                page.room,
-
-                            Items:
-                                page.items.join(
-                                    ", "
-                                ),
-
-                            Category:
-                                item.category,
-
-                            MissingItem:
-                                item.checklistItem,
-
-                            Remarks:
-                                item.remarks
-
-                        });
-
-                    }
-
-                });
-
-        }
-    );
-
-    return data;
-
-}
-
-function getMissingDrawingData() {
-
-    return validationStore
-        .filter(
-            page =>
-                page.drawingNotAvailable
-        )
-        .map(page => ({
-
-            Page:
-                page.page,
-
-            Room:
-                page.room,
-
-            Items:
-                page.items.join(
-                    ", "
-                ),
-
-            Reason:
-                page.drawingMissingReason
-
-        }));
-
-}
-
-function getCoverageData() {
-
-    return getBOQCoverage()
-        .map(item => ({
-
-            Room:
-                item.room,
-
-            Item:
-                item.item,
-
-            Validated:
-                item.validated
-                    ? "Yes"
-                    : "No"
-
-        }));
 
 }
