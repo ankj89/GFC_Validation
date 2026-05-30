@@ -1,428 +1,131 @@
 // =========================================
-// APP CONTROLLER
+// APP CONTROLLER - VERSION 3
+// =========================================
+
+// =========================================
+// DOM
+// =========================================
+
+const gfcPdfInput =
+    document.getElementById(
+        "gfcPdfInput"
+    );
+
+const saveValidationBtn =
+    document.getElementById(
+        "saveValidationBtn"
+    );
+
+const generateReportBtn =
+    document.getElementById(
+        "generateReportBtn"
+    );
+
+const exportExcelBtn =
+    document.getElementById(
+        "exportExcelBtn"
+    );
+
+const categoryDropdown =
+    document.getElementById(
+        "categoryDropdown"
+    );
+
+const drawingNotAvailable =
+    document.getElementById(
+        "drawingNotAvailable"
+    );
+
+// =========================================
+// INITIAL UI STATE
 // =========================================
 
 document.addEventListener(
     "DOMContentLoaded",
-    initializeApplication
+    initializeApp
 );
 
-// =========================================
-// INITIALIZE
-// =========================================
+function initializeApp() {
 
-function initializeApplication() {
+    // Validation hidden initially
 
-    console.log(
-        "GFC Validation Tool Initialized"
-    );
-
-    bindGlobalEvents();
-
-    initializeDefaults();
-
-}
-
-// =========================================
-// DEFAULTS
-// =========================================
-
-function initializeDefaults() {
-
-    document.getElementById(
-        "drawingMissingReason"
-    ).style.display = "none";
-
-}
-
-// =========================================
-// EVENTS
-// =========================================
-
-function bindGlobalEvents() {
-
-    bindDrawingAvailability();
-
-    bindReportGeneration();
-
-    bindExcelExport();
-
-    bindProjectReset();
-
-}
-
-// =========================================
-// DRAWING NOT AVAILABLE
-// =========================================
-
-function bindDrawingAvailability() {
-
-    const checkbox =
-        document.getElementById(
-            "drawingNotAvailable"
+    const mainLayout =
+        document.querySelector(
+            ".main-layout"
         );
-
-    const reasonBox =
-        document.getElementById(
-            "drawingMissingReason"
-        );
-
-    checkbox?.addEventListener(
-        "change",
-        function () {
-
-            if (this.checked) {
-
-                reasonBox.style.display =
-                    "block";
-
-            } else {
-
-                reasonBox.style.display =
-                    "none";
-
-                reasonBox.value = "";
-
-            }
-
-        }
-    );
-
-}
-
-// =========================================
-// REPORT GENERATION
-// =========================================
-
-function bindReportGeneration() {
-
-    const reportButton =
-        document.getElementById(
-            "generateReportBtn"
-        );
-
-    reportButton?.addEventListener(
-        "click",
-        function () {
-
-            generateAllReports();
-
-        }
-    );
-
-}
-
-// =========================================
-// EXCEL EXPORT
-// =========================================
-
-function bindExcelExport() {
-
-    const exportButton =
-        document.getElementById(
-            "exportExcelBtn"
-        );
-
-    exportButton?.addEventListener(
-        "click",
-        function () {
-
-            exportValidationWorkbook();
-
-        }
-    );
-
-}
-
-// =========================================
-// PROJECT RESET
-// =========================================
-
-function bindProjectReset() {
-
-    window.resetProject =
-        function () {
-
-            const confirmed =
-                confirm(
-                    "Reset entire project?"
-                );
-
-            if (!confirmed)
-                return;
-
-            resetProjectMaster();
-
-            validationStore = [];
-
-            clearValidationForm();
-
-            document.getElementById(
-                "reportContainer"
-            ).innerHTML = "";
-
-            document.getElementById(
-                "roomDropdown"
-            ).innerHTML =
-                '<option value="">Select Room</option>';
-
-            document.getElementById(
-                "itemDropdown"
-            ).innerHTML = "";
-
-            alert(
-                "Project Reset Completed"
-            );
-
-        };
-
-}
-
-// =========================================
-// PAGE CHANGE CALLBACK
-// =========================================
-
-function onPageChanged(
-    pageNumber
-) {
-
-    console.log(
-        "Current Page:",
-        pageNumber
-    );
-
-    loadPageValidation(
-        pageNumber
-    );
-
-}
-
-// =========================================
-// PAGE SAVE CALLBACK
-// =========================================
-
-function onPageSaved(
-    pageData
-) {
-
-    console.log(
-        "Page Saved",
-        pageData
-    );
-
-}
-
-// =========================================
-// PROJECT STATUS
-// =========================================
-
-function getProjectStatus() {
-
-    const totalPages =
-        getPdfInfo().totalPages;
-
-    const validatedPages =
-        validationStore.length;
-
-    const pendingPages =
-        totalPages -
-        validatedPages;
-
-    return {
-
-        totalPages,
-
-        validatedPages,
-
-        pendingPages
-
-    };
-
-}
-
-// =========================================
-// DASHBOARD SUMMARY
-// =========================================
-
-function refreshDashboardSummary() {
-
-    const status =
-        getProjectStatus();
-
-    console.log(
-        "Project Status",
-        status
-    );
-
-}
-
-// =========================================
-// VALIDATION COMPLETENESS
-// =========================================
-
-function getValidationCompleteness() {
-
-    const pdfInfo =
-        getPdfInfo();
 
     if (
-        pdfInfo.totalPages === 0
+        mainLayout
     ) {
 
-        return 0;
+        mainLayout.style.display =
+            "none";
 
     }
 
-    return Math.round(
+    // Review hidden initially
 
-        (
-            validationStore.length /
-            pdfInfo.totalPages
-        ) * 100
-
-    );
-
-}
-
-// =========================================
-// BOQ COVERAGE
-// =========================================
-
-function getBOQCoverage() {
-
-    const coverage = [];
-
-    Object.keys(
-        projectMaster.roomItemMap
-    ).forEach(room => {
-
-        projectMaster
-            .roomItemMap[room]
-            .forEach(item => {
-
-                const found =
-                    validationStore.some(
-                        page =>
-
-                            page.room === room &&
-
-                            page.items.includes(
-                                item
-                            )
-                    );
-
-                coverage.push({
-
-                    room,
-
-                    item,
-
-                    validated:
-                        found
-
-                });
-
-            });
-
-    });
-
-    return coverage;
-
-}
-
-// =========================================
-// HEALTH CHECK
-// =========================================
-
-function applicationHealthCheck() {
-
-    return {
-
-        pdfLoaded:
-            getPdfInfo().loaded,
-
-        boqLoaded:
-            projectMaster.rooms
-                .length > 0,
-
-        validationCount:
-            validationStore.length
-
-    };
-
-}
-
-// =========================================
-// DEBUG
-// =========================================
-
-window.debugApp =
-    function () {
-
-        console.log(
-            "Project Master",
-            projectMaster
+    const reviewSection =
+        document.getElementById(
+            "boqReviewSection"
         );
-
-        console.log(
-            "Validation Store",
-            validationStore
-        );
-
-        console.log(
-            "Coverage",
-            getBOQCoverage()
-        );
-
-        console.log(
-            "Health",
-            applicationHealthCheck()
-        );
-
-    };
-
-// =========================================
-// AUTO SAVE (OPTIONAL)
-// =========================================
-
-setInterval(() => {
 
     if (
-        validationStore.length === 0
-    ) return;
+        reviewSection
+    ) {
 
-    localStorage.setItem(
-        "gfcValidationBackup",
-        JSON.stringify(
-            validationStore
-        )
+        reviewSection.style.display =
+            "none";
+
+    }
+
+    console.log(
+        "GFC Validation Tool V3 Loaded"
     );
 
-}, 30000);
+}
 
 // =========================================
-// RESTORE BACKUP
+// GFC PDF UPLOAD
 // =========================================
 
-(function restoreBackup() {
+gfcPdfInput?.addEventListener(
+    "change",
+    handleGFCPdfUpload
+);
 
-    const backup =
-        localStorage.getItem(
-            "gfcValidationBackup"
-        );
+async function handleGFCPdfUpload(
+    event
+) {
 
-    if (!backup)
+    const file =
+        event.target.files[0];
+
+    if (!file) {
         return;
+    }
 
     try {
 
-        validationStore =
-            JSON.parse(
-                backup
+        if (
+            typeof loadPDF !==
+            "function"
+        ) {
+
+            console.error(
+                "loadPDF() missing"
             );
 
+            return;
+
+        }
+
+        await loadPDF(
+            file
+        );
+
         console.log(
-            "Backup Restored"
+            "GFC PDF Loaded"
         );
 
     } catch (error) {
@@ -431,6 +134,222 @@ setInterval(() => {
             error
         );
 
+        alert(
+            "Failed to load GFC PDF"
+        );
+
     }
 
-})();
+}
+
+// =========================================
+// CATEGORY CHANGE
+// =========================================
+
+categoryDropdown?.addEventListener(
+    "change",
+    handleCategoryChange
+);
+
+function handleCategoryChange() {
+
+    if (
+        typeof generateChecklist ===
+        "function"
+    ) {
+
+        generateChecklist();
+
+    }
+
+}
+
+// =========================================
+// DRAWING NOT AVAILABLE
+// =========================================
+
+drawingNotAvailable
+?.addEventListener(
+    "change",
+    function () {
+
+        const reasonBox =
+            document.getElementById(
+                "drawingMissingReason"
+            );
+
+        if (!reasonBox)
+            return;
+
+        reasonBox.disabled =
+            !this.checked;
+
+    }
+);
+
+// =========================================
+// SAVE VALIDATION
+// =========================================
+
+saveValidationBtn
+?.addEventListener(
+    "click",
+    function () {
+
+        if (
+            typeof saveCurrentPageValidation !==
+            "function"
+        ) {
+
+            console.error(
+                "saveCurrentPageValidation missing"
+            );
+
+            return;
+
+        }
+
+        saveCurrentPageValidation();
+
+    }
+);
+
+// =========================================
+// REPORTS
+// =========================================
+
+generateReportBtn
+?.addEventListener(
+    "click",
+    function () {
+
+        if (
+            typeof generateReports !==
+            "function"
+        ) {
+
+            console.error(
+                "generateReports missing"
+            );
+
+            return;
+
+        }
+
+        generateReports();
+
+    }
+);
+
+// =========================================
+// EXCEL
+// =========================================
+
+exportExcelBtn
+?.addEventListener(
+    "click",
+    function () {
+
+        if (
+            typeof exportValidationExcel !==
+            "function"
+        ) {
+
+            console.error(
+                "exportValidationExcel missing"
+            );
+
+            return;
+
+        }
+
+        exportValidationExcel();
+
+    }
+);
+
+// =========================================
+// HELPERS
+// =========================================
+
+function getSelectedValues(
+    selectElement
+) {
+
+    return Array.from(
+        selectElement.selectedOptions
+    ).map(
+        option =>
+            option.value
+    );
+
+}
+
+function getCurrentRoom() {
+
+    const roomDropdown =
+        document.getElementById(
+            "roomDropdown"
+        );
+
+    return roomDropdown
+        ? roomDropdown.value
+        : "";
+
+}
+
+function getCurrentItems() {
+
+    const itemDropdown =
+        document.getElementById(
+            "itemDropdown"
+        );
+
+    if (!itemDropdown) {
+        return [];
+    }
+
+    return getSelectedValues(
+        itemDropdown
+    );
+
+}
+
+function getCurrentCategories() {
+
+    const categoryDropdown =
+        document.getElementById(
+            "categoryDropdown"
+        );
+
+    if (!categoryDropdown) {
+        return [];
+    }
+
+    return getSelectedValues(
+        categoryDropdown
+    );
+
+}
+
+// =========================================
+// DEBUG
+// =========================================
+
+window.debugProjectMaster =
+    function () {
+
+        console.log(
+            projectMaster
+        );
+
+    };
+
+window.debugValidationStore =
+    function () {
+
+        console.log(
+            validationStore
+        );
+
+    };
