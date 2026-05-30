@@ -1,14 +1,12 @@
 // =========================================
-// BOQ PARSER
+// BOQ PARSER - VERSION 3
 // =========================================
 
-const projectMaster = {
+window.projectMaster = {
 
     rooms: [],
 
     roomItemMap: {},
-
-    itemCategoryMap: {},
 
     boqRows: []
 
@@ -21,16 +19,6 @@ const projectMaster = {
 const boqInput =
     document.getElementById(
         "boqPdfInput"
-    );
-
-const roomDropdown =
-    document.getElementById(
-        "roomDropdown"
-    );
-
-const itemDropdown =
-    document.getElementById(
-        "itemDropdown"
     );
 
 // =========================================
@@ -53,30 +41,30 @@ async function handleBOQUpload(
 
     try {
 
-        const arrayBuffer =
-            await file.arrayBuffer();
+        resetProjectMaster();
 
-        const pdfData =
-            new Uint8Array(
-                arrayBuffer
-            );
+        const buffer =
+            await file.arrayBuffer();
 
         const pdf =
             await pdfjsLib
-                .getDocument(pdfData)
+                .getDocument(
+                    new Uint8Array(
+                        buffer
+                    )
+                )
                 .promise;
 
         await parseBOQ(pdf);
 
-        populateRoomDropdown();
+        buildFullHome();
 
-        console.log(
-            "BOQ Parsed",
-            projectMaster
-        );
+        renderBOQReviewTable();
+
+        showBOQReview();
 
         alert(
-            "BOQ Successfully Parsed"
+            "BOQ Parsed. Please review extracted items."
         );
 
     } catch (error) {
@@ -84,735 +72,189 @@ async function handleBOQUpload(
         console.error(error);
 
         alert(
-            "Error parsing BOQ"
+            "Failed to parse BOQ."
         );
 
     }
-
-}
-/*extract item name from item code*/
-function tryExtractItemFromQIRow(row) {
-
-    if (!row.includes("QI-")) {
-        return null;
-    }
-
-    const cleanRow =
-        row.replace(/\s+/g, " ").trim();
-
-    // Remove QI code
-
-    const withoutCode =
-        cleanRow.replace(
-            /^QI-[A-Z0-9\-]+\s*/i,
-            ""
-        );
-
-    const stopWords = [
-
-        "Brand",
-        "Location",
-        "SqFt",
-        "Nos",
-        "RFt",
-        "RFT",
-        "Package",
-        "Description",
-        "₹"
-
-    ];
-
-    let itemName =
-        withoutCode;
-
-    let firstStopIndex =
-        itemName.length;
-
-    stopWords.forEach(word => {
-
-        const idx =
-            itemName.indexOf(word);
-
-        if (
-            idx > 0 &&
-            idx < firstStopIndex
-        ) {
-
-            firstStopIndex = idx;
-
-        }
-
-    });
-
-    itemName =
-        itemName
-            .substring(
-                0,
-                firstStopIndex
-            )
-            .trim();
-
-    return itemName;
-
-}
-/*process BOQ rows*/
-
-function processBOQRows(rows) {
-
-    resetProjectMaster();
-
-    const allItems =
-        new Set();
-
-    rows.forEach(row => {
-
-        const description =
-            row.Description ||
-            row.description ||
-            "";
-
-        const itemNameColumn =
-            row["Item Name"] ||
-            row.itemName ||
-            row.item_name ||
-            "";
-
-        const room =
-            extractLocation(
-                description
-            );
-
-        let item =
-            extractSKU(
-                description
-            );
-
-        // fallback
-
-        if (
-            !item ||
-            item.trim() === ""
-        ) {
-
-            item =
-                itemNameColumn
-                    .trim();
-
-        }
-
-        if (
-            !room ||
-            !item
-        ) {
-            return;
-        }
-
-        // ROOM
-
-        if (
-            !projectMaster.rooms.includes(
-                room
-            )
-        ) {
-
-            projectMaster.rooms.push(
-                room
-            );
-
-            projectMaster.roomItemMap[
-                room
-            ] = [];
-
-        }
-
-        // ROOM ITEM
-
-        if (
-            !projectMaster.roomItemMap[
-                room
-            ].includes(item)
-        ) {
-
-            projectMaster.roomItemMap[
-                room
-            ].push(item);
-
-        }
-
-        allItems.add(item);
-
-    });
-
-    // =================================
-    // FULL HOME
-    // =================================
-
-    projectMaster.rooms.push(
-        "FULL HOME"
-    );
-
-    projectMaster.roomItemMap[
-        "FULL HOME"
-    ] =
-        Array.from(
-            allItems
-        );
-buildFullHomeItems();
-    populateRoomDropdown();
-    
-
-    console.log(
-        projectMaster
-    );
-
-}
-/*extract location*/
-function extractLocation(
-    text
-) {
-
-    if (!text)
-        return "";
-
-    const match =
-        text.match(
-            /Location\s*:\s*(.*?)\s*(Service On|Super Category|Sub Super Category|SKU|Description|$)/i
-        );
-
-    if (
-        match &&
-        match[1]
-    ) {
-
-        return match[1]
-            .trim();
-
-    }
-
-    return "";
-
-}
-
-/*extract SKUs*/
-function extractSKU(
-    text
-) {
-
-    if (!text)
-        return "";
-
-    const match =
-        text.match(
-            /SKU\s*:\s*(.*?)\s*(Description|$)/i
-        );
-
-    if (
-        match &&
-        match[1]
-    ) {
-
-        return match[1]
-            .trim();
-
-    }
-
-    return "";
 
 }
 
 // =========================================
-// PARSE BOQ
+// MAIN PARSER
 // =========================================
-async function parseBOQ(pdf) {
 
-    resetProjectMaster();
+async function parseBOQ(
+    pdf
+) {
 
-    let currentRoom = "";
-    let lastDetectedRoom = "";
-    let currentItem = "";
+    let fullText = "";
 
-    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+    for (
+        let pageNo = 1;
+        pageNo <= pdf.numPages;
+        pageNo++
+    ) {
 
-        const page = await pdf.getPage(pageNo);
+        const page =
+            await pdf.getPage(
+                pageNo
+            );
 
-        const textContent =
+        const content =
             await page.getTextContent();
 
-        const rows =
-            buildRowsFromPDF(
-                textContent.items
-            );
+        const pageText =
+            content.items
+                .map(
+                    item => item.str
+                )
+                .join("\n");
 
-        console.log(
-            "PAGE",
-            pageNo,
-            rows
+        fullText +=
+            "\n" +
+            pageText;
+
+    }
+
+    const blocks =
+        fullText.split(
+            /QI-\d+/gi
         );
 
-        for (let i = 0; i < rows.length; i++) {
-
-            const row =
-                rows[i]
-                .replace(/\s+/g, " ")
-                .trim();
-
-            if (!row) continue;
-
-            // =====================
-            // ROOM HEADER
-            // =====================
-
-            if (
-                isActualRoomHeader(
-                    row
-                )
-            ) {
-
-                currentRoom =
-                    row;
-
-                lastDetectedRoom =
-                    row;
-
-                if (
-                    !projectMaster.rooms.includes(
-                        currentRoom
-                    )
-                ) {
-
-                    projectMaster.rooms.push(
-                        currentRoom
-                    );
-
-                    projectMaster.roomItemMap[
-                        currentRoom
-                    ] = [];
-
-                }
-
-                continue;
-            }
-
-            // =====================
-            // ITEM NAME
-            // =====================
-
-            const itemName =
-    tryExtractItemFromQIRow(
-        row
+    blocks.forEach(
+        parseItemBlock
     );
 
-if (
-    itemName
+}
+
+// =========================================
+// ITEM BLOCK
+// =========================================
+
+function parseItemBlock(
+    block
 ) {
 
-    if (
-        !currentRoom
-    ) {
-
-        currentRoom =
-            lastDetectedRoom;
-    }
-
-    if (
-        currentRoom
-    ) {
-
-        currentItem =
-            itemName;
-
-        addItemToRoom(
-            currentRoom,
-            itemName
+    const room =
+        extractField(
+            block,
+            "Location"
         );
 
-        console.log(
-            "ITEM ADDED",
-            currentRoom,
-            itemName
+    let item =
+        extractField(
+            block,
+            "SKU"
         );
 
-    }
-
-}
-            // =====================
-            // SUPER CATEGORY
-            // =====================
-
-            if (
-                row.includes(
-                    "Super Category"
-                )
-            ) {
-
-                let superCategory =
-                    row
-                        .replace(
-                            "Super Category",
-                            ""
-                        )
-                        .replace(
-                            ":",
-                            ""
-                        )
-                        .trim();
-
-                if (
-                    !superCategory &&
-                    rows[i + 1]
-                ) {
-
-                    superCategory =
-                        rows[i + 1]
-                        .trim();
-                }
-
-                if (
-                    currentItem
-                ) {
-
-                    ensureItemMap(
-                        currentItem
-                    );
-
-                    projectMaster
-                        .itemCategoryMap[
-                        currentItem
-                    ]
-                        .superCategory =
-                        superCategory;
-                }
-
-                continue;
-            }
-
-            // =====================
-            // SUB CATEGORY
-            // =====================
-
-            if (
-                row.includes(
-                    "Sub Super Category"
-                )
-            ) {
-
-                let subCategory =
-                    row
-                        .replace(
-                            "Sub Super Category",
-                            ""
-                        )
-                        .replace(
-                            ":",
-                            ""
-                        )
-                        .trim();
-
-                if (
-                    !subCategory &&
-                    rows[i + 1]
-                ) {
-
-                    subCategory =
-                        rows[i + 1]
-                        .trim();
-                }
-
-                if (
-                    currentItem
-                ) {
-
-                    ensureItemMap(
-                        currentItem
-                    );
-
-                    projectMaster
-                        .itemCategoryMap[
-                        currentItem
-                    ]
-                        .subCategory =
-                        subCategory;
-                }
-
-                continue;
-            }
-
-            // =====================
-            // FALLBACK LOCATION
-            // =====================
-
-            if (
-                row.includes(
-                    "Location"
-                )
-            ) {
-
-                const fallbackRoom =
-                    extractRoomFromDescription(
-                        row
-                    );
-
-                if (
-                    fallbackRoom
-                ) {
-
-                    currentRoom =
-                        fallbackRoom;
-
-                    lastDetectedRoom =
-                        fallbackRoom;
-
-                    if (
-                        !projectMaster.rooms.includes(
-                            currentRoom
-                        )
-                    ) {
-
-                        projectMaster.rooms.push(
-                            currentRoom
-                        );
-
-                        projectMaster.roomItemMap[
-                            currentRoom
-                        ] = [];
-                    }
-                }
-            }
-        }
-    }
-
-    populateRoomDropdown();
-
-    console.log(
-        "ROOM ITEM MAP"
-    );
-
-    console.log(
-        JSON.stringify(
-            projectMaster.roomItemMap,
-            null,
-            2
-        )
-    );
-
-}
-// =========================================
-// ROOM DETECTION
-// =========================================
-
-function isActualRoomHeader(text) {
-
-    const clean =
-        text.trim();
-
-    if (
-        clean.includes("QI-")
-    ) {
-        return false;
-    }
-
-    if (
-        clean.includes("₹")
-    ) {
-        return false;
-    }
-
-    if (
-        /\d/.test(clean)
-    ) {
-        return false;
-    }
-
-    const ignore = [
-
-        "ITEM CODE",
-        "ITEM NAME",
-        "SPECIFICATIONS",
-        "DESCRIPTION",
-        "UNIT",
-        "QTY",
-        "SP UNIT",
-        "TOTAL PRICE",
-        "SKU",
-        "CATEGORY",
-        "SUB CATEGORY",
-        "BRAND",
-        "LOCATION"
-
-    ];
-
-    if (
-        ignore.some(
-            x =>
-                clean
-                    .toUpperCase()
-                    .includes(x)
-        )
-    ) {
-
-        return false;
-
-    }
-
-    return (
-
-        clean ===
-        clean.toUpperCase()
-
-        &&
-
-        clean.length > 2
-
-        &&
-
-        clean.length < 60
-
-    );
-
-}
-
-function extractRoomFromDescription(
-    text
-) {
-
-    const match =
-        text.match(
-            /Location\s*:\s*([^:]+)/i
-        );
-
-    if (
-        match
-    ) {
-
-        return match[1]
-            .replace(
-                /Service On.*/i,
-                ""
-            )
-            .trim();
-    }
-
-    return "";
-
-}
-// =========================================
-// BUILD ROWS
-// =========================================
-
-function buildRowsFromPDF(
-    items
-) {
-
-    const rows = [];
-
-    items.sort(
-        (a, b) => {
-
-            const yDiff =
-                b.transform[5] -
-                a.transform[5];
-
-            if (
-                Math.abs(
-                    yDiff
-                ) > 3
-            ) {
-
-                return yDiff;
-
-            }
-
-            return (
-                a.transform[4] -
-                b.transform[4]
+    if (!item) {
+
+        item =
+            extractItemNameFallback(
+                block
             );
 
-        }
-    );
+    }
 
-    items.forEach(item => {
+    if (
+        !room ||
+        !item
+    ) {
+        return;
+    }
 
-        const y =
-            item.transform[5];
-
-        let row =
-            rows.find(
-                r =>
-                    Math.abs(
-                        r.y - y
-                    ) < 3
-            );
-
-        if (!row) {
-
-            row = {
-
-                y,
-
-                text: []
-
-            };
-
-            rows.push(
-                row
-            );
-
-        }
-
-        row.text.push(
-            item.str
-        );
-
-    });
-
-    return rows.map(
-        row =>
-            row.text.join(
-                " "
-            )
+    addBOQRow(
+        room,
+        item
     );
 
 }
 
 // =========================================
-// EXTRACT VALUE
+// FIELD EXTRACTION
 // =========================================
 
-function extractValue(
+function extractField(
     text,
     label
 ) {
 
-    const index =
-        text.indexOf(
-            label
+    const regex =
+        new RegExp(
+
+            label +
+            "\\s*:\\s*(.*?)" +
+            "(?=Location\\s*:|SKU\\s*:|Description\\s*:|Super Category\\s*:|Sub Super Category\\s*:|Service On\\s*:|$)",
+
+            "is"
         );
 
-    if (
-        index === -1
-    ) return "";
+    const match =
+        text.match(regex);
+
+    if (!match) {
+        return "";
+    }
+
+    return cleanText(
+        match[1]
+    );
+
+}
+
+// =========================================
+// ITEM NAME FALLBACK
+// =========================================
+
+function extractItemNameFallback(
+    block
+) {
+
+    const match =
+        block.match(
+            /Item Name(.*?)Brand/is
+        );
+
+    if (!match) {
+        return "";
+    }
+
+    return cleanText(
+        match[1]
+    );
+
+}
+
+// =========================================
+// CLEAN
+// =========================================
+
+function cleanText(
+    text
+) {
 
     return text
-        .substring(
-            index +
-            label.length
-        )
-        .replace(
-            ":",
-            ""
-        )
+        .replace(/\n/g, " ")
+        .replace(/\s+/g, " ")
         .trim();
 
 }
 
 // =========================================
-// ADD ITEM
+// ADD ROW
 // =========================================
 
-function addItemToRoom(
+function addBOQRow(
     room,
     item
 ) {
+
+    projectMaster.boqRows.push({
+
+        room,
+        item
+
+    });
 
     if (
         !projectMaster.roomItemMap[
@@ -824,152 +266,35 @@ function addItemToRoom(
             room
         ] = [];
 
-    }
-
-    const alreadyExists =
-        projectMaster
-            .roomItemMap[
+        projectMaster.rooms.push(
             room
-        ]
-            .some(
-                existing =>
-
-                    existing
-                        .trim()
-                        .toLowerCase() ===
-
-                    item
-                        .trim()
-                        .toLowerCase()
-            );
-
-    if (
-        !alreadyExists
-    ) {
-
-        projectMaster
-            .roomItemMap[
-            room
-        ]
-            .push(
-                item
-            );
+        );
 
     }
 
-}
-
-// =========================================
-// ITEM CATEGORY OBJECT
-// =========================================
-
-function ensureItemMap(
-    item
-) {
-
     if (
-        !projectMaster
-            .itemCategoryMap[
+        !projectMaster.roomItemMap[
+            room
+        ].includes(
             item
-        ]
-    ) {
-
-        projectMaster
-            .itemCategoryMap[
-            item
-        ] = {
-
-            superCategory:
-                "",
-
-            subCategory:
-                ""
-
-        };
-
-    }
-
-}
-
-// =========================================
-// LAST ITEM
-// =========================================
-
-function getLastRoomItem(
-    room
-) {
-
-    const items =
-        projectMaster
-            .roomItemMap[
-            room
-        ];
-
-    if (
-        !items ||
-        items.length === 0
-    ) {
-
-        return null;
-
-    }
-
-    return items[
-        items.length - 1
-    ];
-
-}
-
-// =========================================
-// POPULATE ROOMS
-// =========================================
-
-function populateRoomDropdown() {
-
-    roomDropdown.innerHTML = `
-        <option value="">
-            Select Room
-        </option>
-    `;
-
-    const rooms = [
-        ...projectMaster.rooms
-    ];
-
-    if (
-        !rooms.includes(
-            "FULL HOME"
         )
     ) {
 
-        rooms.unshift(
-            "FULL HOME"
+        projectMaster.roomItemMap[
+            room
+        ].push(
+            item
         );
 
     }
 
-    rooms.forEach(room => {
-
-        const option =
-            document.createElement(
-                "option"
-            );
-
-        option.value =
-            room;
-
-        option.textContent =
-            room;
-
-        roomDropdown.appendChild(
-            option
-        );
-
-    });
-
 }
 
-function buildFullHomeItems() {
+// =========================================
+// FULL HOME
+// =========================================
+
+function buildFullHome() {
 
     const allItems =
         new Set();
@@ -977,13 +302,6 @@ function buildFullHomeItems() {
     Object.keys(
         projectMaster.roomItemMap
     ).forEach(room => {
-
-        if (
-            room ===
-            "FULL HOME"
-        ) {
-            return;
-        }
 
         projectMaster
             .roomItemMap[
@@ -1006,131 +324,17 @@ function buildFullHomeItems() {
             allItems
         );
 
-}
-
-// =========================================
-// ROOM CHANGE
-// =========================================
-
-roomDropdown?.addEventListener(
-    "change",
-    handleRoomChange
-);
-
-function handleRoomChange() {
-
-    const room =
-        roomDropdown.value;
-
-    itemDropdown.innerHTML =
-        "";
-
     if (
-        !room
+        !projectMaster.rooms.includes(
+            "FULL HOME"
+        )
     ) {
-        return;
-    }
 
-    const items =
-        projectMaster.roomItemMap[
-            room
-        ] || [];
-
-    items
-        .sort()
-        .forEach(item => {
-
-            const option =
-                document.createElement(
-                    "option"
-                );
-
-            option.value =
-                item;
-
-            option.textContent =
-                item;
-
-            itemDropdown.appendChild(
-                option
-            );
-
-        });
-
-}
-
-// =========================================
-// ITEM CHANGE
-// =========================================
-
-itemDropdown?.addEventListener(
-    "change",
-    autoSuggestCategories
-);
-
-
-
-function autoSuggestCategories() {
-
-    const selectedItems =
-        Array.from(
-            itemDropdown.selectedOptions
-        ).map(
-            option => option.value
+        projectMaster.rooms.unshift(
+            "FULL HOME"
         );
 
-    const categories =
-        new Set();
-
-    selectedItems.forEach(item => {
-
-        const itemData =
-            projectMaster
-                .itemCategoryMap[
-                item
-            ];
-
-        if (!itemData) return;
-
-        [
-            itemData.superCategory,
-            itemData.subCategory
-        ].forEach(value => {
-
-            const mapped =
-                CATEGORY_MAPPING[
-                    value
-                ];
-
-            if (
-                mapped
-            ) {
-
-                mapped.forEach(
-                    category =>
-                        categories.add(
-                            category
-                        )
-                );
-
-            }
-
-        });
-
-    });
-
-    Array.from(
-        categoryDropdown.options
-    ).forEach(option => {
-
-        option.selected =
-            categories.has(
-                option.value
-            );
-
-    });
-
-    generateChecklist();
+    }
 
 }
 
@@ -1144,95 +348,21 @@ function resetProjectMaster() {
 
     projectMaster.roomItemMap = {};
 
-    projectMaster.itemCategoryMap = {};
-
     projectMaster.boqRows = [];
 
 }
 
-document
-    .getElementById(
-        "addManualItemBtn"
-    )
-    ?.addEventListener(
-        "click",
-        addManualItem
-    );
+// =========================================
+// SHOW REVIEW SCREEN
+// =========================================
 
-function addManualItem() {
+function showBOQReview() {
 
-    const room =
-        roomDropdown.value;
-
-    const input =
-        document.getElementById(
-            "manualItemInput"
-        );
-
-    const item =
-        input.value.trim();
-
-    if (
-        !room ||
-        !item
-    ) {
-
-        alert(
-            "Select Room and enter Item"
-        );
-
-        return;
-
-    }
-
-    if (
-        !projectMaster.roomItemMap[
-            room
-        ]
-    ) {
-
-        projectMaster.roomItemMap[
-            room
-        ] = [];
-
-    }
-
-    if (
-        !projectMaster.roomItemMap[
-            room
-        ].includes(
-            item
+    document
+        .getElementById(
+            "boqReviewSection"
         )
-    ) {
-
-        projectMaster.roomItemMap[
-            room
-        ].push(
-            item
-        );
-
-    }
-
-    // Also update FULL HOME
-
-    if (
-        !projectMaster.roomItemMap[
-            "FULL HOME"
-        ].includes(
-            item
-        )
-    ) {
-
-        projectMaster.roomItemMap[
-            "FULL HOME"
-        ].push(
-            item
-        );
-
-    }
-
-    handleRoomChange();
-
-    input.value = "";
+        .style.display =
+        "block";
 
 }
