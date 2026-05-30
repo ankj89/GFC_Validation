@@ -1,268 +1,59 @@
 // =========================================
-// EXCEL EXPORT MODULE
+// EXCEL EXPORT - VERSION 3
 // =========================================
 
-function exportValidationWorkbook() {
+function exportValidationExcel() {
 
     try {
 
         const workbook =
             XLSX.utils.book_new();
 
-        // =====================================
-        // SHEET 1
-        // VALIDATION REGISTER
-        // =====================================
-
-        const validationRegister =
-            getValidationRegisterData();
-
-        const validationSheet =
-            XLSX.utils.json_to_sheet(
-                validationRegister
-            );
-
-        XLSX.utils.book_append_sheet(
-
-            workbook,
-
-            validationSheet,
-
-            "Validation Register"
-
+        addCoverageSummarySheet(
+            workbook
         );
 
-        // =====================================
-        // SHEET 2
-        // SUMMARY REPORT
-        // =====================================
-
-        const summaryData =
-            getValidationSummary();
-
-        const summarySheet =
-            XLSX.utils.json_to_sheet(
-                summaryData
-            );
-
-        XLSX.utils.book_append_sheet(
-
-            workbook,
-
-            summarySheet,
-
-            "Summary"
-
+        addDetailedValidationSheet(
+            workbook
         );
 
-        // =====================================
-        // SHEET 3
-        // DA ACTION ITEMS
-        // =====================================
-
-        const actionItems =
-            getDAActionData();
-
-        const actionSheet =
-            XLSX.utils.json_to_sheet(
-                actionItems
-            );
-
-        XLSX.utils.book_append_sheet(
-
-            workbook,
-
-            actionSheet,
-
-            "DA Action Items"
-
+        addMissingBOQSheet(
+            workbook
         );
 
-        // =====================================
-        // SHEET 4
-        // MISSING DRAWINGS
-        // =====================================
-
-        const missingDrawings =
-            getMissingDrawingData();
-
-        const missingSheet =
-            XLSX.utils.json_to_sheet(
-                missingDrawings
-            );
-
-        XLSX.utils.book_append_sheet(
-
-            workbook,
-
-            missingSheet,
-
-            "Missing Drawings"
-
+        addDrawingNotAvailableSheet(
+            workbook
         );
 
-        // =====================================
-        // SHEET 5
-        // BOQ COVERAGE
-        // =====================================
-
-        const coverageData =
-            getCoverageData();
-
-        const coverageSheet =
-            XLSX.utils.json_to_sheet(
-                coverageData
-            );
-
-        XLSX.utils.book_append_sheet(
-
-            workbook,
-
-            coverageSheet,
-
-            "BOQ Coverage"
-
+        addRoomCoverageSheet(
+            workbook
         );
 
-        // =====================================
-        // SHEET 6
-        // PROJECT INFO
-        // =====================================
-
-        const projectInfo = [
-
-            {
-                Metric:
-                    "Generated On",
-
-                Value:
-                    new Date()
-                        .toLocaleString()
-            },
-
-            {
-                Metric:
-                    "Total Rooms",
-
-                Value:
-                    projectMaster.rooms
-                        .length
-            },
-
-            {
-                Metric:
-                    "Validated Pages",
-
-                Value:
-                    validationStore
-                        .length
-            },
-
-            {
-                Metric:
-                    "Coverage Items",
-
-                Value:
-                    getCoverageData()
-                        .length
-            }
-
-        ];
-
-        const infoSheet =
-            XLSX.utils.json_to_sheet(
-                projectInfo
-            );
-
-        XLSX.utils.book_append_sheet(
-
-            workbook,
-
-            infoSheet,
-
-            "Project Info"
-
-        );
-
-        // =====================================
-        // COLUMN WIDTHS
-        // =====================================
-
-        setSheetWidths(
-            validationSheet,
-            [
-                10,
-                25,
-                50,
-                20,
-                40,
-                15,
-                60
-            ]
-        );
-
-        setSheetWidths(
-            actionSheet,
-            [
-                10,
-                25,
-                50,
-                20,
-                40,
-                60
-            ]
-        );
-
-        setSheetWidths(
-            missingSheet,
-            [
-                10,
-                25,
-                50,
-                60
-            ]
-        );
-
-        setSheetWidths(
-            coverageSheet,
-            [
-                25,
-                50,
-                15
-            ]
-        );
-
-        // =====================================
-        // FILE NAME
-        // =====================================
-
-        const fileName =
-
-            "GFC_Validation_Report_" +
-
+        const timestamp =
             new Date()
                 .toISOString()
-                .split("T")[0] +
-
-            ".xlsx";
+                .replace(
+                    /[:.]/g,
+                    "-"
+                );
 
         XLSX.writeFile(
+
             workbook,
-            fileName
+
+            `GFC_Validation_Report_${timestamp}.xlsx`
+
         );
 
-        alert(
-            "Excel Report Exported Successfully"
-        );
-
-    } catch (error) {
+    }
+    catch (error) {
 
         console.error(
             error
         );
 
         alert(
-            "Excel Export Failed"
+            "Failed to export Excel"
         );
 
     }
@@ -270,152 +61,331 @@ function exportValidationWorkbook() {
 }
 
 // =========================================
-// SHEET WIDTHS
+// SHEET 1
+// COVERAGE SUMMARY
 // =========================================
 
-function setSheetWidths(
-    worksheet,
-    widths
+function addCoverageSummarySheet(
+    workbook
 ) {
 
-    worksheet["!cols"] =
-        widths.map(width => ({
+    const summary =
+        getCoverageSummary();
 
-            wch: width
+    const data = [
 
-        }));
+        [
+            "Metric",
+            "Value"
+        ],
 
-}
+        [
+            "Total BOQ Items",
+            summary.total
+        ],
 
-// =========================================
-// QUICK EXPORT
-// =========================================
+        [
+            "Covered Items",
+            summary.covered
+        ],
 
-window.exportValidationWorkbook =
-    exportValidationWorkbook;
+        [
+            "Missing Items",
+            summary.missing
+        ],
 
-// =========================================
-// EXPORT CURRENT PAGE
-// =========================================
+        [
+            "Coverage %",
+            summary.percentage
+        ]
 
-function exportCurrentPageData() {
+    ];
 
-    const currentPage =
-        getCurrentPageNumber();
-
-    const pageData =
-        getValidationByPage(
-            currentPage
-        );
-
-    if (!pageData) {
-
-        alert(
-            "No validation found for current page"
-        );
-
-        return;
-
-    }
-
-    const workbook =
-        XLSX.utils.book_new();
-
-    const sheet =
-        XLSX.utils.json_to_sheet(
-
-            pageData.checklistResults
-
+    const worksheet =
+        XLSX.utils.aoa_to_sheet(
+            data
         );
 
     XLSX.utils.book_append_sheet(
 
         workbook,
 
-        sheet,
+        worksheet,
 
-        `Page_${currentPage}`
-
-    );
-
-    XLSX.writeFile(
-
-        workbook,
-
-        `Page_${currentPage}_Validation.xlsx`
+        "Coverage Summary"
 
     );
 
 }
 
 // =========================================
-// EXPORT BOQ COVERAGE ONLY
+// SHEET 2
+// DETAILED VALIDATION
 // =========================================
 
-function exportCoverageOnly() {
+function addDetailedValidationSheet(
+    workbook
+) {
 
-    const workbook =
-        XLSX.utils.book_new();
+    const rows = [];
 
-    const coverageSheet =
+    validationStore.forEach(
+        page => {
+
+            rows.push({
+
+                Page:
+                    page.pageNo,
+
+                Room:
+                    page.room,
+
+                Items:
+                    page.items.join(
+                        ", "
+                    ),
+
+                Categories:
+                    page.categories.join(
+                        ", "
+                    ),
+
+                DrawingNotAvailable:
+                    page.drawingNotAvailable
+                        ? "Yes"
+                        : "No",
+
+                MissingReason:
+                    page.drawingMissingReason,
+
+                Remarks:
+                    page.overallRemarks
+
+            });
+
+        }
+    );
+
+    const worksheet =
         XLSX.utils.json_to_sheet(
-
-            getCoverageData()
-
+            rows
         );
 
     XLSX.utils.book_append_sheet(
 
         workbook,
 
-        coverageSheet,
+        worksheet,
 
-        "Coverage"
-
-    );
-
-    XLSX.writeFile(
-
-        workbook,
-
-        "BOQ_Coverage_Report.xlsx"
+        "Detailed Validation"
 
     );
 
 }
 
 // =========================================
-// EXPORT DA ACTIONS ONLY
+// SHEET 3
+// MISSING BOQ
 // =========================================
 
-function exportDAActionsOnly() {
+function addMissingBOQSheet(
+    workbook
+) {
 
-    const workbook =
-        XLSX.utils.book_new();
+    const rows =
+        getMissingBOQItems()
+            .map(
+                row => ({
 
-    const actionSheet =
+                    Room:
+                        row.room,
+
+                    Item:
+                        row.item,
+
+                    Status:
+                        "Missing"
+
+                })
+            );
+
+    const worksheet =
         XLSX.utils.json_to_sheet(
-
-            getDAActionData()
-
+            rows
         );
 
     XLSX.utils.book_append_sheet(
 
         workbook,
 
-        actionSheet,
+        worksheet,
 
-        "DA Action Items"
-
-    );
-
-    XLSX.writeFile(
-
-        workbook,
-
-        "DA_Action_Items.xlsx"
+        "Missing BOQ"
 
     );
 
 }
+
+// =========================================
+// SHEET 4
+// DRAWING NOT AVAILABLE
+// =========================================
+
+function addDrawingNotAvailableSheet(
+    workbook
+) {
+
+    const rows =
+        getDrawingNotAvailablePages()
+            .map(
+                page => ({
+
+                    Page:
+                        page.pageNo,
+
+                    Room:
+                        page.room,
+
+                    Reason:
+                        page.drawingMissingReason
+
+                })
+            );
+
+    const worksheet =
+        XLSX.utils.json_to_sheet(
+            rows
+        );
+
+    XLSX.utils.book_append_sheet(
+
+        workbook,
+
+        worksheet,
+
+        "Drawing NA"
+
+    );
+
+}
+
+// =========================================
+// SHEET 5
+// ROOM COVERAGE
+// =========================================
+
+function addRoomCoverageSheet(
+    workbook
+) {
+
+    const coverage =
+        getBOQCoverage();
+
+    const roomMap = {};
+
+    coverage.forEach(
+        row => {
+
+            if (
+                !roomMap[
+                    row.room
+                ]
+            ) {
+
+                roomMap[
+                    row.room
+                ] = {
+
+                    total: 0,
+
+                    covered: 0
+
+                };
+
+            }
+
+            roomMap[
+                row.room
+            ].total++;
+
+            if (
+                row.validated
+            ) {
+
+                roomMap[
+                    row.room
+                ].covered++;
+
+            }
+
+        }
+    );
+
+    const rows = [];
+
+    Object.keys(
+        roomMap
+    ).forEach(
+        room => {
+
+            const data =
+                roomMap[
+                    room
+                ];
+
+            const percentage =
+                data.total === 0
+                    ? 0
+                    : Math.round(
+                        (
+                            data.covered /
+                            data.total
+                        ) * 100
+                    );
+
+            rows.push({
+
+                Room:
+                    room,
+
+                TotalItems:
+                    data.total,
+
+                CoveredItems:
+                    data.covered,
+
+                CoveragePercent:
+                    percentage
+
+            });
+
+        }
+    );
+
+    const worksheet =
+        XLSX.utils.json_to_sheet(
+            rows
+        );
+
+    XLSX.utils.book_append_sheet(
+
+        workbook,
+
+        worksheet,
+
+        "Room Coverage"
+
+    );
+
+}
+
+// =========================================
+// DEBUG
+// =========================================
+
+window.testExcelExport =
+    function () {
+
+        exportValidationExcel();
+
+    };
