@@ -1,6 +1,6 @@
-/* ===================================
+/* =========================================
    GLOBAL
-=================================== */
+========================================= */
 
 *{
     margin:0;
@@ -25,9 +25,9 @@ header h1{
     font-size:24px;
 }
 
-/* ===================================
+/* =========================================
    UPLOAD SECTION
-=================================== */
+========================================= */
 
 .upload-section{
     display:flex;
@@ -40,34 +40,89 @@ header h1{
     background:white;
     padding:15px;
     border-radius:10px;
-    min-width:300px;
+    min-width:320px;
     box-shadow:0 2px 8px rgba(0,0,0,0.08);
 }
 
 .upload-card label{
     display:block;
     font-weight:600;
-    margin-bottom:8px;
+    margin-bottom:10px;
 }
 
 .upload-card input{
     width:100%;
 }
 
-/* ===================================
+/* =========================================
+   BOQ REVIEW
+========================================= */
+
+#boqReviewSection{
+    background:white;
+    margin:20px;
+    padding:20px;
+    border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.08);
+}
+
+#boqReviewSection h2{
+    margin-bottom:10px;
+}
+
+#boqReviewSection p{
+    margin-bottom:20px;
+}
+
+#boqReviewSection input{
+    width:100%;
+    padding:8px;
+    border:1px solid #ccc;
+    border-radius:4px;
+}
+
+.delete-row-btn{
+    background:#c62828;
+    color:white;
+    border:none;
+    padding:8px 12px;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.delete-row-btn:hover{
+    background:#8e0000;
+}
+
+#addBoqRowBtn,
+#continueValidationBtn{
+    background:#1f4e79;
+    color:white;
+    border:none;
+    padding:10px 16px;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+#addBoqRowBtn:hover,
+#continueValidationBtn:hover{
+    background:#163a5c;
+}
+
+/* =========================================
    MAIN LAYOUT
-=================================== */
+========================================= */
 
 .main-layout{
     display:flex;
     gap:20px;
-    padding:0 20px 20px 20px;
-    height:70vh;
+    padding:20px;
+    min-height:750px;
 }
 
-/* ===================================
+/* =========================================
    PDF VIEWER
-=================================== */
+========================================= */
 
 .viewer-panel{
     flex:2;
@@ -90,7 +145,7 @@ header h1{
     background:#1f4e79;
     color:white;
     border:none;
-    padding:8px 14px;
+    padding:10px 16px;
     border-radius:6px;
     cursor:pointer;
 }
@@ -102,13 +157,12 @@ header h1{
 #pdfCanvas{
     border:1px solid #ddd;
     width:100%;
-    flex:1;
-    object-fit:contain;
+    background:white;
 }
 
-/* ===================================
+/* =========================================
    VALIDATION PANEL
-=================================== */
+========================================= */
 
 .validation-panel{
     flex:1;
@@ -116,6 +170,7 @@ header h1{
     border-radius:10px;
     padding:20px;
     overflow-y:auto;
+    max-height:850px;
     box-shadow:0 2px 8px rgba(0,0,0,0.08);
 }
 
@@ -125,9 +180,9 @@ header h1{
 
 .validation-panel label{
     display:block;
+    font-weight:600;
     margin-top:15px;
     margin-bottom:6px;
-    font-weight:600;
 }
 
 .validation-panel select,
@@ -149,22 +204,49 @@ header h1{
 }
 
 #itemDropdown{
-    height:140px;
+    height:180px;
 }
 
 #categoryDropdown{
-    height:120px;
+    height:140px;
 }
 
-/* ===================================
+/* =========================================
+   MANUAL ITEM
+========================================= */
+
+.manual-item-container{
+    display:flex;
+    gap:10px;
+    margin-top:5px;
+}
+
+.manual-item-container input{
+    flex:1;
+}
+
+.manual-item-container button{
+    background:#1f4e79;
+    color:white;
+    border:none;
+    padding:10px 16px;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.manual-item-container button:hover{
+    background:#163a5c;
+}
+
+/* =========================================
    DRAWING STATUS
-=================================== */
+========================================= */
 
 .drawing-status{
     margin-top:15px;
     padding:10px;
-    background:#f8f9fb;
-    border:1px solid #e3e6ea;
+    background:#f7f9fc;
+    border:1px solid #dfe5eb;
     border-radius:6px;
 }
 
@@ -172,18 +254,18 @@ header h1{
     margin-top:10px;
 }
 
-/* ===================================
+/* =========================================
    CHECKLIST
-=================================== */
+========================================= */
 
 #checklistContainer{
     margin-top:20px;
 }
 
 .category-block{
-    margin-bottom:20px;
     border:1px solid #ddd;
     border-radius:8px;
+    margin-bottom:20px;
     overflow:hidden;
 }
 
@@ -205,13 +287,13 @@ header h1{
 
 .checklist-title{
     font-weight:600;
-    margin-bottom:8px;
+    margin-bottom:10px;
 }
 
 .status-group{
     display:flex;
     gap:15px;
-    margin-bottom:8px;
+    margin-bottom:10px;
 }
 
 .status-group label{
@@ -224,9 +306,9 @@ header h1{
     min-height:50px;
 }
 
-/* ===================================
+/* =========================================
    BUTTONS
-=================================== */
+========================================= */
 
 #saveValidationBtn,
 #generateReportBtn,
@@ -250,9 +332,9 @@ header h1{
     background:#163a5c;
 }
 
-/* ===================================
+/* =========================================
    REPORTS
-=================================== */
+========================================= */
 
 .report-section{
     background:white;
@@ -270,10 +352,15 @@ header h1{
     margin-top:20px;
 }
 
+#reportContainer h3{
+    margin-top:25px;
+    margin-bottom:10px;
+}
+
 .report-table{
     width:100%;
     border-collapse:collapse;
-    margin-top:15px;
+    margin-top:10px;
 }
 
 .report-table th{
@@ -292,15 +379,14 @@ header h1{
     background:#f7f7f7;
 }
 
-/* ===================================
+/* =========================================
    RESPONSIVE
-=================================== */
+========================================= */
 
 @media(max-width:1200px){
 
     .main-layout{
         flex-direction:column;
-        height:auto;
     }
 
     .viewer-panel{
@@ -308,6 +394,10 @@ header h1{
     }
 
     .validation-panel{
-        min-height:600px;
+        max-height:none;
+    }
+
+    .manual-item-container{
+        flex-direction:column;
     }
 }
