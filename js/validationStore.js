@@ -4,6 +4,33 @@
 
 window.validationStore = [];
 
+function getProjectInfo() {
+
+    return {
+
+        gfcId:
+            document
+            .getElementById(
+                "gfcIdInput"
+            )?.value || "",
+
+        rfvId:
+            document
+            .getElementById(
+                "rfvIdInput"
+            )?.value || "",
+
+        pid:
+            document
+            .getElementById(
+                "pidInput"
+            )?.value || ""
+
+    };
+
+}
+
+
 // =========================================
 // SAVE CURRENT PAGE
 // =========================================
@@ -64,6 +91,9 @@ const extraDrawingItems =
                 pageNo
         );
 
+const projectInfo =
+    getProjectInfo();
+    
     const record = {
 
         pageNo,
@@ -73,6 +103,7 @@ const extraDrawingItems =
         items,
 
         categories,
+        projectInfo,
 
         checklist,
 
