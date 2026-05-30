@@ -33,7 +33,9 @@ function generateReports() {
     generateRoomCoverageReport(
         container
     );
-
+generateDrawingMismatchReport(
+    container
+);
 }
 
 // =========================================
@@ -523,6 +525,92 @@ function generateRoomCoverageReport(
                 </tr>
 
             `;
+
+        }
+    );
+
+    html += `
+        </table>
+    `;
+
+    div.innerHTML =
+        html;
+
+    container.appendChild(
+        div
+    );
+
+}
+function generateDrawingMismatchReport(
+    container
+) {
+
+    const div =
+        document.createElement(
+            "div"
+        );
+
+    let html = `
+
+        <h3>
+            Drawing vs BOQ Mismatch
+        </h3>
+
+        <table class="report-table">
+
+        <tr>
+
+            <th>Page</th>
+
+            <th>Room</th>
+
+            <th>Item</th>
+
+            <th>Action</th>
+
+            <th>Reason</th>
+
+        </tr>
+
+    `;
+
+    validationStore.forEach(
+        page => {
+
+            (
+                page.extraDrawingItems || []
+            )
+            .forEach(item => {
+
+                html += `
+
+                    <tr>
+
+                        <td>
+                            ${page.pageNo}
+                        </td>
+
+                        <td>
+                            ${page.room}
+                        </td>
+
+                        <td>
+                            ${item.item}
+                        </td>
+
+                        <td>
+                            ${item.action}
+                        </td>
+
+                        <td>
+                            ${item.reason}
+                        </td>
+
+                    </tr>
+
+                `;
+
+            });
 
         }
     );
