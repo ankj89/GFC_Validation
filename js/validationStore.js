@@ -119,7 +119,7 @@ function getRoomSelectedItems() {
     validationStore.forEach(
         page => {
 
-            if(
+            if (
                 !roomMap[
                     page.room
                 ]
@@ -128,6 +128,7 @@ function getRoomSelectedItems() {
                 roomMap[
                     page.room
                 ] = new Set();
+
             }
 
             page.items.forEach(
@@ -144,6 +145,7 @@ function getRoomSelectedItems() {
     );
 
     return roomMap;
+
 }
 
 function getBOQCoverage() {
@@ -151,31 +153,57 @@ function getBOQCoverage() {
     const selectedItems =
         getRoomSelectedItems();
 
-    const report = [];
+    const coverage = [];
 
     Object.keys(
         projectMaster.roomItemMap
     ).forEach(room => {
 
+        if (
+            room ===
+            "FULL HOME"
+        ) {
+            return;
+        }
+
         const boqItems =
-            projectMaster
-            .roomItemMap[
+            projectMaster.roomItemMap[
                 room
-            ];
+            ] || [];
 
         boqItems.forEach(item => {
 
-            const found =
+            let covered = false;
 
-                selectedItems[room]
+            // Room specific
 
-                &&
-
+            if (
+                selectedItems[room] &&
                 selectedItems[
                     room
-                ].has(item);
+                ].has(item)
+            ) {
 
-            report.push({
+                covered = true;
+
+            }
+
+            // FULL HOME drawing
+
+            if (
+                selectedItems[
+                    "FULL HOME"
+                ] &&
+                selectedItems[
+                    "FULL HOME"
+                ].has(item)
+            ) {
+
+                covered = true;
+
+            }
+
+            coverage.push({
 
                 room:
                     room,
@@ -184,7 +212,7 @@ function getBOQCoverage() {
                     item,
 
                 validated:
-                    found === true
+                    covered
 
             });
 
@@ -192,7 +220,8 @@ function getBOQCoverage() {
 
     });
 
-    return report;
+    return coverage;
+
 }
 
 // =========================================
