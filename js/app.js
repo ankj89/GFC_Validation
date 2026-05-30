@@ -80,7 +80,57 @@ function initializeApp() {
     );
 
 }
+function addExtraItemRow() {
 
+    const container =
+        document.getElementById(
+            "extraItemsContainer"
+        );
+
+    const row =
+        document.createElement(
+            "div"
+        );
+
+    row.innerHTML = `
+
+        <input
+            class="extra-item-name"
+            placeholder="Item Name">
+
+        <select
+            class="extra-item-action">
+
+            <option value="Remove">
+                Remove From Drawing
+            </option>
+
+            <option value="Verify">
+                Verify With QS
+            </option>
+
+        </select>
+
+        <input
+            class="extra-item-reason"
+            placeholder="Reason">
+
+    `;
+
+    container.appendChild(
+        row
+    );
+
+}
+
+document
+.getElementById(
+    "addExtraItemBtn"
+)
+.addEventListener(
+    "click",
+    addExtraItemRow
+);
 // =========================================
 // GFC PDF UPLOAD
 // =========================================
