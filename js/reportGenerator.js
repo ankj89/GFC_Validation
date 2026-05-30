@@ -176,7 +176,7 @@ function generateDetailedValidationReport(
                     </td>
 
                     <td>
-                        ${page.overallRemarks || ""}
+                        ${buildChecklistSummary(page)}
                     </td>
 
                 </tr>
@@ -198,7 +198,40 @@ function generateDetailedValidationReport(
     );
 
 }
+function buildChecklistSummary(page) {
 
+    let text = "";
+
+    page.checklist.forEach(item => {
+
+        if (
+            item.status === "Absent"
+        ) {
+
+            text +=
+
+                item.title +
+                " : " +
+                item.remark +
+                "\n";
+
+        }
+
+    });
+
+    if (
+        page.overallRemarks
+    ) {
+
+        text +=
+            "\nOverall : " +
+            page.overallRemarks;
+
+    }
+
+    return text;
+
+}
 // =========================================
 // MISSING BOQ
 // =========================================
