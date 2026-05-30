@@ -480,11 +480,4 @@ window.testCategorySuggestion =
         );
 
     };
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
-
-        populateCategoryDropdown();
-
-    }
-);
+populateCategoryDropdown();
