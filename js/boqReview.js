@@ -254,7 +254,16 @@ function continueToValidation() {
 
     rebuildProjectMaster();
 
-    populateRoomDropdown();
+populateRoomDropdown();
+
+const roomDropdown =
+    document.getElementById(
+        "roomDropdown"
+    );
+
+roomDropdown.dispatchEvent(
+    new Event("change")
+);
 
     document
         .getElementById(
