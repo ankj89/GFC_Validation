@@ -105,6 +105,12 @@ const CHECKLIST_CONFIG = {
         "Window Opening Dimensions Available",
         "Level Information Available"
 
+    ],
+    painting: [
+
+        "Panting area marked",
+        "Legend provided"
+
     ]
 
 };
