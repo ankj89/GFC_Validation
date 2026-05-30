@@ -296,7 +296,9 @@ function generateDetailedValidationReport(
 }
 function buildChecklistSummary(page) {
 
-    let text = "";
+    const absentItems = [];
+
+    const remarks = [];
 
     (page.checklist || []).forEach(item => {
 
@@ -304,52 +306,85 @@ function buildChecklistSummary(page) {
             item.status || "";
 
         const remark =
-            item.remark || "";
-
-        const hasRemark =
-            remark.trim() !== "";
+            (item.remark || "").trim();
 
         if (
-
             status === "Absent"
-
-            ||
-
-            hasRemark
-
         ) {
 
-            text +=
+            absentItems.push(
+                item.title
+            );
 
-                item.title +
+        }
 
-                " : " +
+        if (
+            remark !== ""
+        ) {
 
-                status.toUpperCase() +
-
-                " : " +
-
-                remark +
-
-                "\n";
+            remarks.push(
+                `${item.title} : ${remark}`
+            );
 
         }
 
     });
 
+    let text = "";
+
     if (
-        page.overallRemarks
+        absentItems.length
     ) {
 
         text +=
+            "Absent Items:\n";
 
-            "\nOverall : " +
+        absentItems.forEach(item => {
 
-            page.overallRemarks;
+            text +=
+                "• " +
+                item +
+                "\n";
+
+        });
+
+        text += "\n";
 
     }
 
-    return text;
+    if (
+        remarks.length
+    ) {
+
+        text +=
+            "Remarks:\n";
+
+        remarks.forEach(item => {
+
+            text +=
+                "• " +
+                item +
+                "\n";
+
+        });
+
+        text += "\n";
+
+    }
+
+    if (
+        page.overallRemarks &&
+        page.overallRemarks.trim()
+    ) {
+
+        text +=
+            "Overall:\n" +
+
+            page.overallRemarks.trim();
+
+    }
+
+    return text.trim();
 
 }
 // =========================================
