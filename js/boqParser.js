@@ -100,9 +100,10 @@ async function parseBOQ(pdf) {
     resetProjectMaster();
 
     let currentRoom = "";
+    let lastDetectedRoom = "";
     let currentItem = "";
 
-    for(let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
 
         const page = await pdf.getPage(pageNo);
 
@@ -114,22 +115,38 @@ async function parseBOQ(pdf) {
                 textContent.items
             );
 
-        for(let i=0;i<rows.length;i++) {
+        console.log(
+            "PAGE",
+            pageNo,
+            rows
+        );
+
+        for (let i = 0; i < rows.length; i++) {
 
             const row =
                 rows[i]
-                .replace(/\s+/g," ")
+                .replace(/\s+/g, " ")
                 .trim();
 
-            if(!row) continue;
+            if (!row) continue;
 
+            // =====================
             // ROOM HEADER
+            // =====================
 
-            if(isActualRoomHeader(row)) {
+            if (
+                isActualRoomHeader(
+                    row
+                )
+            ) {
 
-                currentRoom = row;
+                currentRoom =
+                    row;
 
-                if(
+                lastDetectedRoom =
+                    row;
+
+                if (
                     !projectMaster.rooms.includes(
                         currentRoom
                     )
@@ -142,85 +159,217 @@ async function parseBOQ(pdf) {
                     projectMaster.roomItemMap[
                         currentRoom
                     ] = [];
+
                 }
 
                 continue;
             }
 
+            // =====================
             // ITEM NAME
+            // =====================
 
-            if(
-                row === "Item Name" &&
-                rows[i+1]
+            if (
+                row.includes(
+                    "Item Name"
+                )
             ) {
 
-                currentItem =
-                    rows[i+1]
-                    .trim();
+                let itemName =
+                    row
+                        .replace(
+                            "Item Name",
+                            ""
+                        )
+                        .replace(
+                            ":",
+                            ""
+                        )
+                        .trim();
 
-                if(
-                    currentRoom &&
-                    currentItem
+                if (
+                    !itemName &&
+                    rows[i + 1]
                 ) {
+
+                    itemName =
+                        rows[i + 1]
+                        .trim();
+                }
+
+                if (
+                    !currentRoom
+                ) {
+
+                    currentRoom =
+                        lastDetectedRoom;
+                }
+
+                if (
+                    currentRoom &&
+                    itemName
+                ) {
+
+                    currentItem =
+                        itemName;
 
                     addItemToRoom(
                         currentRoom,
-                        currentItem
+                        itemName
+                    );
+
+                    console.log(
+                        "ITEM ADDED",
+                        currentRoom,
+                        itemName
                     );
                 }
 
                 continue;
             }
 
+            // =====================
             // SUPER CATEGORY
+            // =====================
 
-            if(
-                row === "Super Category" &&
-                rows[i+1]
+            if (
+                row.includes(
+                    "Super Category"
+                )
             ) {
 
-                const superCategory =
-                    rows[i+1]
-                    .trim();
+                let superCategory =
+                    row
+                        .replace(
+                            "Super Category",
+                            ""
+                        )
+                        .replace(
+                            ":",
+                            ""
+                        )
+                        .trim();
 
-                ensureItemMap(
-                    currentItem
-                );
+                if (
+                    !superCategory &&
+                    rows[i + 1]
+                ) {
 
-                projectMaster
-                    .itemCategoryMap[
+                    superCategory =
+                        rows[i + 1]
+                        .trim();
+                }
+
+                if (
                     currentItem
-                ]
-                .superCategory =
-                    superCategory;
+                ) {
+
+                    ensureItemMap(
+                        currentItem
+                    );
+
+                    projectMaster
+                        .itemCategoryMap[
+                        currentItem
+                    ]
+                        .superCategory =
+                        superCategory;
+                }
 
                 continue;
             }
 
+            // =====================
             // SUB CATEGORY
+            // =====================
 
-            if(
-                row ===
-                "Sub Super Category" &&
-                rows[i+1]
+            if (
+                row.includes(
+                    "Sub Super Category"
+                )
             ) {
 
-                const subCategory =
-                    rows[i+1]
-                    .trim();
+                let subCategory =
+                    row
+                        .replace(
+                            "Sub Super Category",
+                            ""
+                        )
+                        .replace(
+                            ":",
+                            ""
+                        )
+                        .trim();
 
-                ensureItemMap(
-                    currentItem
-                );
+                if (
+                    !subCategory &&
+                    rows[i + 1]
+                ) {
 
-                projectMaster
-                    .itemCategoryMap[
+                    subCategory =
+                        rows[i + 1]
+                        .trim();
+                }
+
+                if (
                     currentItem
-                ]
-                .subCategory =
-                    subCategory;
+                ) {
+
+                    ensureItemMap(
+                        currentItem
+                    );
+
+                    projectMaster
+                        .itemCategoryMap[
+                        currentItem
+                    ]
+                        .subCategory =
+                        subCategory;
+                }
 
                 continue;
+            }
+
+            // =====================
+            // FALLBACK LOCATION
+            // =====================
+
+            if (
+                row.includes(
+                    "Location"
+                )
+            ) {
+
+                const fallbackRoom =
+                    extractRoomFromDescription(
+                        row
+                    );
+
+                if (
+                    fallbackRoom
+                ) {
+
+                    currentRoom =
+                        fallbackRoom;
+
+                    lastDetectedRoom =
+                        fallbackRoom;
+
+                    if (
+                        !projectMaster.rooms.includes(
+                            currentRoom
+                        )
+                    ) {
+
+                        projectMaster.rooms.push(
+                            currentRoom
+                        );
+
+                        projectMaster.roomItemMap[
+                            currentRoom
+                        ] = [];
+                    }
+                }
             }
         }
     }
@@ -228,10 +377,18 @@ async function parseBOQ(pdf) {
     populateRoomDropdown();
 
     console.log(
-        projectMaster
+        "ROOM ITEM MAP"
     );
-}
 
+    console.log(
+        JSON.stringify(
+            projectMaster.roomItemMap,
+            null,
+            2
+        )
+    );
+
+}
 // =========================================
 // ROOM DETECTION
 // =========================================
@@ -242,23 +399,31 @@ function isActualRoomHeader(
 
     const ignore = [
 
+        "Item Code",
         "Item Name",
-        "SKU",
+        "Specifications",
+        "Description",
         "Qty",
         "Rate",
         "Amount",
+        "SP Unit Price",
+        "Total Price",
+        "Location",
+        "Service On",
         "Super Category",
-        "Sub Super Category",
-        "Description"
+        "Sub Super Category"
 
     ];
 
-    if(
+    if (
         ignore.some(
-            x =>
-            text.includes(x)
+            item =>
+                text.includes(
+                    item
+                )
         )
     ) {
+
         return false;
     }
 
@@ -273,9 +438,35 @@ function isActualRoomHeader(
 
         &&
 
-        text.length < 50
+        text.length < 60
 
     );
+
+}
+
+function extractRoomFromDescription(
+    text
+) {
+
+    const match =
+        text.match(
+            /Location\s*:\s*([^:]+)/i
+        );
+
+    if (
+        match
+    ) {
+
+        return match[1]
+            .replace(
+                /Service On.*/i,
+                ""
+            )
+            .trim();
+    }
+
+    return "";
+
 }
 // =========================================
 // BUILD ROWS
@@ -532,15 +723,22 @@ function handleRoomChange() {
     itemDropdown.innerHTML =
         "";
 
-    if (
-        !room
-    ) return;
+    if (!room) return;
 
     const items =
-        projectMaster
-            .roomItemMap[
+        projectMaster.roomItemMap[
             room
         ] || [];
+
+    console.log(
+        "ROOM SELECTED",
+        room
+    );
+
+    console.log(
+        "ITEMS",
+        items
+    );
 
     items.forEach(item => {
 
@@ -555,10 +753,9 @@ function handleRoomChange() {
         option.textContent =
             item;
 
-        itemDropdown
-            .appendChild(
-                option
-            );
+        itemDropdown.appendChild(
+            option
+        );
 
     });
 
