@@ -116,7 +116,7 @@ const extraDrawingItems =
 
 function collectExtraItems() {
 
-    const rows = [];
+    const items = [];
 
     document
     .querySelectorAll(
@@ -124,28 +124,28 @@ function collectExtraItems() {
     )
     .forEach(row => {
 
-        rows.push({
+        items.push({
 
             item:
                 row.querySelector(
                     ".extra-item-name"
-                ).value,
+                )?.value || "",
 
             action:
                 row.querySelector(
                     ".extra-item-action"
-                ).value,
+                )?.value || "",
 
             reason:
                 row.querySelector(
                     ".extra-item-reason"
-                ).value
+                )?.value || ""
 
         });
 
     });
 
-    return rows;
+    return items;
 
 }
 
