@@ -14,7 +14,10 @@ function saveCurrentPageValidation() {
         document.getElementById(
             "roomDropdown"
         )?.value || "";
-
+    
+const extraDrawingItems =
+    collectExtraItems();
+    
     const items =
         Array.from(
             document.getElementById(
@@ -77,7 +80,9 @@ function saveCurrentPageValidation() {
 
         drawingMissingReason,
 
-        overallRemarks
+        overallRemarks,
+
+        extraDrawingItems
 
     };
 
@@ -108,6 +113,42 @@ function saveCurrentPageValidation() {
     );
 
 }
+
+function collectExtraItems() {
+
+    const rows = [];
+
+    document
+    .querySelectorAll(
+        "#extraItemsContainer > div"
+    )
+    .forEach(row => {
+
+        rows.push({
+
+            item:
+                row.querySelector(
+                    ".extra-item-name"
+                ).value,
+
+            action:
+                row.querySelector(
+                    ".extra-item-action"
+                ).value,
+
+            reason:
+                row.querySelector(
+                    ".extra-item-reason"
+                ).value
+
+        });
+
+    });
+
+    return rows;
+
+}
+
 
 // =========================================
 // CHECKLIST COLLECTION
